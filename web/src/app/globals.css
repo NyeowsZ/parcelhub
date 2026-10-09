@@ -2,27 +2,34 @@
 
 @layer base {
   :root {
-    --canvas: #090d16;
-    --surface-card: #0f172a;
-    --surface-subtle: #1e293b;
-    --surface-subtle-hover: #334155;
-    --border-subtle: #334155;
-    --brand-primary: #2563eb;
-    --brand-hover: #1d4ed8;
-    --brand-soft: rgba(37, 99, 235, 0.15);
-    --text-primary: #f8fafc;
-    --text-secondary: #94a3b8;
-    --text-muted: #64748b;
-    --success-bg: rgba(16, 185, 129, 0.15);
-    --success-text: #34d399;
-    --warning-bg: rgba(245, 158, 11, 0.15);
-    --warning-text: #fbbf24;
-    --danger-bg: rgba(239, 68, 68, 0.15);
-    --danger-text: #f87171;
+    /* 60% — Canvas & Base Surfaces */
+    --surface-canvas: #F8FAFC; /* bg-slate-50: Full-screen app background */
+    --surface-card: #FFFFFF; /* bg-white: Elevated floating cards, modals */
+    --surface-subtle: #F1F5F9; /* bg-slate-100: Input field background, pill fills */
+    --surface-inverse: #0F172A; /* bg-slate-900: High-contrast hero metric card */
+    --surface-glass: rgba(255, 255, 255, 0.85); /* Floating top dock with backdrop-blur-md */
+
+    /* 30% — Structure, Layout & Content */
+    --text-primary: #0F172A; /* text-slate-900: Headings, amounts, active codes */
+    --text-secondary: #475569; /* text-slate-600: Field labels, instructions */
+    --text-muted: #94A3B8; /* text-slate-400: Timestamps, placeholders */
+    --border-subtle: #E2E8F0; /* border-slate-200: Soft card rings, dividers */
+    --border-focus: #2563EB; /* ring-blue-600 */
+
+    /* 10% — Accent, Actions & Semantic Feedback */
+    --brand-primary: #2563EB; /* bg-blue-600: Main CTA buttons */
+    --brand-hover: #1D4ED8; /* bg-blue-700 */
+    --brand-soft: #EFF6FF; /* bg-blue-50: Secondary buttons */
+    --brand-soft-text: #1D4ED8; /* text-blue-700 */
+    --status-success-bg: #DCFCE7; /* bg-emerald-100: Ready to Claim */
+    --status-success-text: #15803D; /* text-emerald-700 */
+    --status-warning-bg: #FEF3C7; /* bg-amber-100: Pending / Awaiting Funding */
+    --status-warning-text: #B45309; /* text-amber-700 */
+    --status-error: #EF4444; /* bg-rose-500: Badges & errors */
   }
 
   body {
-    background-color: var(--canvas);
+    background-color: var(--surface-canvas);
     color: var(--text-primary);
     font-family: -apple-system, BlinkMacSystemFont, "Plus Jakarta Sans", "Inter", "Segoe UI", Roboto, sans-serif;
     -webkit-font-smoothing: antialiased;
@@ -35,61 +42,55 @@
   }
 }
 
-/* Glassmorphism & Custom Elements */
-.glass-nav {
-  background: rgba(15, 23, 42, 0.85);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-bottom: 1px solid rgba(51, 65, 85, 0.7);
-}
-
-.terminal-card {
-  background-color: #0f172a;
-  border: 1px solid #1e293b;
-  border-radius: 1.25rem;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+/* Design System Component Utilities */
+.surface-card {
+  background-color: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 1.25rem; /* rounded-2xl (20px) */
+  box-shadow: 0 1px 3px 0 rgba(100, 116, 139, 0.08), 0 1px 2px -1px rgba(100, 116, 139, 0.08);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.terminal-card:hover {
-  border-color: #334155;
+.surface-card:hover {
+  box-shadow: 0 4px 6px -1px rgba(100, 116, 139, 0.12), 0 2px 4px -2px rgba(100, 116, 139, 0.08);
 }
 
-.glow-ping {
-  animation: pulse-glow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+.hero-inverse-card {
+  background-color: #0F172A;
+  border-radius: 1.75rem; /* rounded-3xl (28px) */
+  color: #FFFFFF;
+  box-shadow: 0 20px 25px -5px rgba(15, 23, 42, 0.15), 0 8px 10px -6px rgba(15, 23, 42, 0.1);
 }
 
-@keyframes pulse-glow {
+.glass-dock {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04);
+}
+
+.glow-ping-light {
+  animation: pulse-glow-light 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse-glow-light {
   0%, 100% {
     box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
   }
   50% {
-    box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
+    box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
   }
 }
 
-.scanner-crosshair {
-  position: relative;
-}
-
-.scanner-crosshair::before,
-.scanner-crosshair::after {
-  content: '';
-  position: absolute;
-  width: 24px;
-  height: 24px;
-  border-color: #3b82f6;
-  pointer-events: none;
-}
-
-.scanline {
+.scanline-light {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   height: 2px;
-  background: linear-gradient(90deg, transparent, #38bdf8, transparent);
-  box-shadow: 0 0 12px #38bdf8;
+  background: linear-gradient(90deg, transparent, #2563EB, transparent);
+  box-shadow: 0 0 10px #2563EB;
   animation: scan 2.5s ease-in-out infinite;
 }
 

@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'ParcelHub Counter Terminal | CTU Danao Campus',
+  title: 'ParcelHub Staff Counter Terminal | CTU Danao Campus',
   description:
     'Staff Desk Portal for Zero-Credit Escrow, Envelope Ledgering, and Gemini AI Visual Ingestion at CTU Danao Campus.',
 };
@@ -13,7 +13,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
@@ -26,7 +26,7 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="bg-[#090d16] text-slate-100 min-h-screen antialiased selection:bg-blue-600 selection:text-white">
+      <body className="bg-[#F8FAFC] text-[#0F172A] min-h-screen antialiased selection:bg-blue-600 selection:text-white">
         {children}
       </body>
     </html>

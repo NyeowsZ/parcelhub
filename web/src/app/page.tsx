@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { StatCards } from '@/components/StatCards';
 import { QueueTab } from '@/components/tabs/QueueTab';
@@ -9,128 +9,92 @@ import { CashInTab } from '@/components/tabs/CashInTab';
 import { LedgerTab } from '@/components/tabs/LedgerTab';
 import { PrintStationQrModal } from '@/components/modals/PrintStationQrModal';
 import { EnvelopeSlipModal } from '@/components/modals/EnvelopeSlipModal';
-import {
-  INITIAL_PARCELS,
-  INITIAL_VISUAL_LOGS,
-  INITIAL_LEDGER,
-  INITIAL_CONFIG,
-} from '@/lib/store';
+import { DatabaseModal } from '@/components/DatabaseModal';
+import { DataService } from '@/lib/dataService';
+import { INITIAL_CONFIG } from '@/lib/store';
 import { ParcelRow, VisualLogRow, EscrowLedgerRow } from '@/types/database';
 import { UserCheck, Camera, Banknote, History, CheckCircle2 } from 'lucide-react';
 
 export default function Home() {
-  const [parcels, setParcels] = useState<ParcelRow[]>(INITIAL_PARCELS);
-  const [visualLogs, setVisualLogs] = useState<VisualLogRow[]>(INITIAL_VISUAL_LOGS);
-  const [ledger, setLedger] = useState<EscrowLedgerRow[]>(INITIAL_LEDGER);
+  const [parcels, setParcels] = useState<ParcelRow[]>([]);
+  const [visualLogs, setVisualLogs] = useState<VisualLogRow[]>([]);
+  const [ledger, setLedger] = useState<EscrowLedgerRow[]>([]);
   const [config, setConfig] = useState(INITIAL_CONFIG);
 
   const [activeTab, setActiveTab] = useState<'QUEUE' | 'INTAKE' | 'CASH_IN' | 'LEDGER'>('QUEUE');
   const [isStationQrModalOpen, setIsStationQrModalOpen] = useState(false);
+  const [isDatabaseModalOpen, setIsDatabaseModalOpen] = useState(false);
   const [slipModalParcel, setSlipModalParcel] = useState<ParcelRow | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 4000);
+    setTimeout(() => setToastMessage(null), 4500);
   };
 
+  // Load parcels from Supabase or persistent DataService
+  const loadData = useCallback(async () => {
+    try {
+      const [p, v, l] = await Promise.all([
+        DataService.getParcels(),
+        DataService.getVisualLogs(),
+        DataService.getLedger(),
+      ]);
+      setParcels(p);
+      setVisualLogs(v);
+      setLedger(l);
+    } catch (e) {
+      console.warn('Data fetch error:', e);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadData();
+    // Subscribe to live Supabase Realtime channel
+    const unsubscribe = DataService.subscribeToChanges(() => {
+      loadData();
+      showToast('⚡ Live Realtime Update received from Supabase!');
+    });
+    return () => unsubscribe();
+  }, [loadData]);
+
   // 1. Handle Cash-In Transition: STAGED -> FUNDED
-  const handleCommitCashIn = (parcelId: string, cashDeposited: number) => {
-    setParcels((prev) =>
-      prev.map((p) => {
-        if (p.parcel_id === parcelId) {
-          const change = cashDeposited - p.cod_amount;
-          return {
-            ...p,
-            cash_deposited: cashDeposited,
-            change_due: change,
-            current_status: 'FUNDED',
-            updated_at: new Date().toISOString(),
-          };
-        }
-        return p;
-      })
-    );
-
-    // Record in ledger
-    setLedger((prev) => [
-      {
-        transaction_id: `tx-${Date.now()}`,
-        parcel_id: parcelId,
-        amount: cashDeposited,
-        transaction_type: 'DEPOSIT',
-        staff_session_id: 'ST-0488',
-        committed_at: new Date().toISOString(),
-      },
-      ...prev,
-    ]);
-
+  const handleCommitCashIn = async (parcelId: string, cashDeposited: number) => {
+    await DataService.commitCashIn(parcelId, cashDeposited);
+    await loadData();
     showToast('Physical envelope funded successfully! State advanced to FUNDED.');
   };
 
   // 2. Handle Courier Intake Transition: FUNDED -> RECEIVED_LOGGED
-  const handleCommitIntake = (
+  const handleCommitIntake = async (
     parcelId: string,
     extractedWaybill: string,
     condition: 'INTACT' | 'DAMAGED' | 'TAMPERED',
     confidence: number,
     imageUri: string
   ) => {
-    setParcels((prev) =>
-      prev.map((p) => {
-        if (p.parcel_id === parcelId) {
-          return {
-            ...p,
-            current_status: 'RECEIVED_LOGGED',
-            updated_at: new Date().toISOString(),
-          };
-        }
-        return p;
-      })
+    await DataService.commitIntake(
+      parcelId,
+      extractedWaybill,
+      condition,
+      confidence,
+      imageUri,
+      !config.ai_required
     );
-
-    // Save visual log
-    setVisualLogs((prev) => [
-      {
-        log_id: `vl-${Date.now()}`,
-        parcel_id: parcelId,
-        image_storage_uri: imageUri,
-        image_hash_sha256: `sha256-${Date.now()}`,
-        detected_waybill: extractedWaybill,
-        ai_bypassed: !config.ai_required,
-        package_condition: condition,
-        confidence_score: confidence,
-        verified_by_staff_id: 'ST-0488',
-        verified_at: new Date().toISOString(),
-      },
-      ...prev,
-    ]);
-
+    await loadData();
     showToast('Intake logged & verified with Gemini AI! Notification dispatched to recipient.');
     setActiveTab('QUEUE');
   };
 
   // 3. Handle Inverted Claim Handshake: RECEIVED_LOGGED -> CLAIMED
-  const handleExecuteClaim = (parcelId: string) => {
+  const handleExecuteClaim = async (parcelId: string) => {
     const target = parcels.find((p) => p.parcel_id === parcelId);
-    if (!target) return;
-
-    setParcels((prev) =>
-      prev.map((p) => {
-        if (p.parcel_id === parcelId) {
-          return {
-            ...p,
-            current_status: 'CLAIMED',
-            updated_at: new Date().toISOString(),
-          };
-        }
-        return p;
-      })
-    );
+    await DataService.executeClaim(parcelId);
+    await loadData();
 
     showToast(
-      `Atomic handover complete! ₱${Math.max(0, target.change_due).toFixed(2)} change disbursed to ${
-        target.recipient_name || 'student'
+      `Atomic handover complete! ₱${Math.max(0, target?.change_due || 0).toFixed(2)} change disbursed to ${
+        target?.recipient_name || 'student'
       }.`
     );
   };
@@ -154,7 +118,6 @@ export default function Home() {
       );
       setActiveTab('QUEUE');
     } else {
-      // Re-ping p-101
       setParcels((prev) =>
         prev.map((p) =>
           p.parcel_id === 'p-101'
@@ -172,12 +135,13 @@ export default function Home() {
   ).length;
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#090d16] text-slate-100 selection:bg-blue-600 selection:text-white">
+    <div className="min-h-screen flex flex-col bg-[#F8FAFC] text-[#0F172A] selection:bg-blue-600 selection:text-white">
       {/* Top Navbar */}
       <Navbar
         aiRequired={config.ai_required}
         onToggleAi={() => setConfig((c) => ({ ...c, ai_required: !c.ai_required }))}
         onOpenStationQrModal={() => setIsStationQrModalOpen(true)}
+        onOpenDatabaseModal={() => setIsDatabaseModalOpen(true)}
         onSimulateClaimPing={handleSimulateClaimPing}
         activePingCount={activePingCount}
       />
@@ -186,7 +150,7 @@ export default function Home() {
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
         {/* Toast Alert Notification */}
         {toastMessage && (
-          <div className="mb-6 p-4 rounded-2xl bg-blue-600/90 text-white font-medium text-xs flex items-center justify-between shadow-xl shadow-blue-600/30 border border-blue-400/40 animate-in fade-in slide-in-from-top-2">
+          <div className="mb-6 p-4 rounded-2xl bg-blue-600 text-white font-medium text-xs flex items-center justify-between shadow-xl shadow-blue-600/20 border border-blue-500 animate-in fade-in slide-in-from-top-2">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-white" />
               <span>{toastMessage}</span>
@@ -200,23 +164,26 @@ export default function Home() {
           </div>
         )}
 
-        {/* 4 Telemetry Counters */}
-        <StatCards parcels={parcels} />
+        {/* 4 Telemetry Counters (including Hero Metric Card) */}
+        <StatCards
+          parcels={parcels}
+          onNavigateToQueue={() => setActiveTab('QUEUE')}
+        />
 
-        {/* Primary Operational Tabs */}
-        <div className="flex items-center gap-2 border-b border-slate-800 pb-4 mb-6 overflow-x-auto">
+        {/* Primary Operational Tabs (Rounded Pill Switcher) */}
+        <div className="flex items-center gap-2 border-b border-slate-200 pb-4 mb-6 overflow-x-auto">
           <button
             onClick={() => setActiveTab('QUEUE')}
             className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold transition-all ${
               activeTab === 'QUEUE'
-                ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/25'
-                : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
+                ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
+                : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
             }`}
           >
             <UserCheck className="w-4 h-4" />
             <span>1. Claim Handshake Queue</span>
             {activePingCount > 0 && (
-              <span className="w-5 h-5 rounded-full bg-emerald-500 text-slate-950 font-black text-[10px] flex items-center justify-center animate-pulse">
+              <span className="w-5 h-5 rounded-full bg-emerald-500 text-white font-black text-[10px] flex items-center justify-center animate-pulse">
                 {activePingCount}
               </span>
             )}
@@ -226,8 +193,8 @@ export default function Home() {
             onClick={() => setActiveTab('INTAKE')}
             className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold transition-all ${
               activeTab === 'INTAKE'
-                ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/25'
-                : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
+                ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
+                : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
             }`}
           >
             <Camera className="w-4 h-4" />
@@ -238,8 +205,8 @@ export default function Home() {
             onClick={() => setActiveTab('CASH_IN')}
             className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold transition-all ${
               activeTab === 'CASH_IN'
-                ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/25'
-                : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
+                ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
+                : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
             }`}
           >
             <Banknote className="w-4 h-4" />
@@ -250,8 +217,8 @@ export default function Home() {
             onClick={() => setActiveTab('LEDGER')}
             className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold transition-all ${
               activeTab === 'LEDGER'
-                ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/25'
-                : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
+                ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
+                : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
             }`}
           >
             <History className="w-4 h-4" />
@@ -259,7 +226,7 @@ export default function Home() {
           </button>
         </div>
 
-        {/* Tab Views */}
+        {/* Active Tab Screen */}
         {activeTab === 'QUEUE' && (
           <QueueTab
             parcels={parcels}
@@ -301,6 +268,12 @@ export default function Home() {
       <EnvelopeSlipModal
         parcel={slipModalParcel}
         onClose={() => setSlipModalParcel(null)}
+      />
+
+      {/* Database Connection Info Modal */}
+      <DatabaseModal
+        isOpen={isDatabaseModalOpen}
+        onClose={() => setIsDatabaseModalOpen(false)}
       />
     </div>
   );
