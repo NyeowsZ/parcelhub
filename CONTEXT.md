@@ -62,6 +62,7 @@
 | 2026-10-10 | Payment Ping | Implemented station QR scan / Station ID ping for `STAGED` orders; locked unpinged orders on desk terminal. | Verified |
 | 2026-10-10 | Multi-Claim | Implemented multi-select for `RECEIVED_LOGGED` parcels and batch claim ping dispatch. | Verified |
 | 2026-10-10 | Build Verification | Verified Next.js 16 production build (`npm run build`) and Expo TypeScript (`npx tsc --noEmit`). | Verified |
+| 2026-10-10 | Google SMTP | Configured Gmail App Password SMTP in `web/.env.local`, added `nodemailer` utility (`email.ts`), and created `/api/send-email`. | Verified |
 
 ---
 

@@ -102,6 +102,15 @@ CREATE INDEX IF NOT EXISTS idx_parcels_waybill ON parcels(waybill_number);
 CREATE INDEX IF NOT EXISTS idx_parcels_status ON parcels(current_status);
 CREATE INDEX IF NOT EXISTS idx_parcels_pings ON parcels(claim_pinged_at) WHERE current_status = 'RECEIVED_LOGGED';
 
+-- 5.1 COLUMN MIGRATION (Ensures existing tables receive the latest schema columns)
+ALTER TABLE parcels ADD COLUMN IF NOT EXISTS recipient_name VARCHAR(255);
+ALTER TABLE parcels ADD COLUMN IF NOT EXISTS recipient_school_id VARCHAR(64);
+ALTER TABLE parcels ADD COLUMN IF NOT EXISTS receipt_image_uri TEXT;
+ALTER TABLE parcels ADD COLUMN IF NOT EXISTS payment_pinged_at TIMESTAMPTZ;
+ALTER TABLE parcels ADD COLUMN IF NOT EXISTS payment_staff_id VARCHAR(64);
+ALTER TABLE parcels ADD COLUMN IF NOT EXISTS payment_station_code VARCHAR(32);
+ALTER TABLE parcels ADD COLUMN IF NOT EXISTS claim_pinged_at TIMESTAMPTZ;
+
 -- 6. VISUAL LOGS (AI Verification Records)
 CREATE TABLE IF NOT EXISTS visual_logs (
     log_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -151,37 +160,53 @@ BEFORE UPDATE OF current_status ON parcels
 FOR EACH ROW
 EXECUTE FUNCTION enforce_monotonic_fsm();
 
--- 9. ENABLE SUPABASE REALTIME
-ALTER PUBLICATION supabase_realtime ADD TABLE parcels;
+-- 9. ENABLE SUPABASE REALTIME (Safe for re-execution)
+DO $$ BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE parcels;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
--- 10. ROW LEVEL SECURITY (RLS) POLICIES
+-- 10. ROW LEVEL SECURITY (RLS) POLICIES (Idempotent)
 ALTER TABLE parcels ENABLE ROW LEVEL SECURITY;
 ALTER TABLE visual_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE escrow_ledger ENABLE ROW LEVEL SECURITY;
 ALTER TABLE system_config ENABLE ROW LEVEL SECURITY;
 
--- Allow public reads and updates for prototype / campus desk terminal operations
+DROP POLICY IF EXISTS "Public full access to parcels" ON parcels;
 CREATE POLICY "Public full access to parcels" ON parcels FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public full access to visual_logs" ON visual_logs;
 CREATE POLICY "Public full access to visual_logs" ON visual_logs FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public full access to escrow_ledger" ON escrow_ledger;
 CREATE POLICY "Public full access to escrow_ledger" ON escrow_ledger FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public read system_config" ON system_config;
 CREATE POLICY "Public read system_config" ON system_config FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Public update system_config" ON system_config;
 CREATE POLICY "Public update system_config" ON system_config FOR UPDATE USING (true) WITH CHECK (true);
 
 -- 11. INITIAL SEED DATA (For Immediate Demonstration)
 INSERT INTO parcels (
     waybill_number, carrier, recipient_name, recipient_school_id,
-    cod_amount, cash_deposited, current_status, claim_pinged_at
+    cod_amount, cash_deposited, current_status, claim_pinged_at,
+    payment_pinged_at, payment_staff_id, payment_station_code
 ) VALUES
 (
     'SPXPH0492817263', 'ShopeeXpress (SPX)', 'John Vince Keyed', 'CTU-2024-8841',
-    340.00, 500.00, 'RECEIVED_LOGGED', NOW()
+    340.00, 500.00, 'RECEIVED_LOGGED', NOW(),
+    NOW() - INTERVAL '2 hours', 'STAFF-0488', 'CTU-DANAO-MAIN-HUB'
 ),
 (
     'JT99482103847', 'J&T Express', 'Mary Jane Rivera', 'CTU-2023-1102',
-    620.00, 620.00, 'FUNDED', NULL
+    620.00, 620.00, 'FUNDED', NULL,
+    NOW() - INTERVAL '4 hours', 'STAFF-0488', 'CTU-DANAO-MAIN-HUB'
 ),
 (
     'FLASH982173620', 'Flash Express', 'Christian Alcantara', 'CTU-2024-9912',
-    215.00, 0.00, 'STAGED', NULL
+    215.00, 0.00, 'STAGED', NULL,
+    NULL, NULL, NULL
 )
 ON CONFLICT DO NOTHING;
