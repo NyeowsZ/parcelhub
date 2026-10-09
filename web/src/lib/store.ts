@@ -1,13 +1,15 @@
 import { ParcelRow, VisualLogRow, EscrowLedgerRow } from '../types/database';
 
 export interface SystemConfig {
-  ai_required: boolean;
+  ai_user_receipt_ocr: boolean;
+  ai_staff_intake_precheck: boolean;
   station_code: string;
   station_name: string;
 }
 
 export const INITIAL_CONFIG: SystemConfig = {
-  ai_required: true,
+  ai_user_receipt_ocr: true,
+  ai_staff_intake_precheck: true,
   station_code: 'CTU-DANAO-MAIN-HUB',
   station_name: 'Campus Terminal 1 (Main Gate Counter)',
 };
@@ -23,9 +25,33 @@ export const INITIAL_PARCELS: ParcelRow[] = [
     cash_deposited: 500.0,
     change_due: 160.0,
     current_status: 'RECEIVED_LOGGED',
-    claim_pinged_at: '2026-03-16T16:44:12Z', // Real-time claim ping active!
+    receipt_image_uri: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=800&q=80',
+    payment_pinged_at: '2026-03-16T14:25:00Z',
+    payment_staff_id: 'STAFF-0488',
+    payment_station_code: 'CTU-DANAO-MAIN-HUB',
+    claim_pinged_at: null, // Ready for mobile student multi-claim!
     created_at: '2026-03-16T14:20:00Z',
     updated_at: '2026-03-16T16:43:00Z',
+    recipient_name: 'John Vince Keyed',
+    recipient_school_id: 'CTU-2024-8841',
+  },
+  {
+    parcel_id: 'p-105',
+    user_id: 'u-student-01',
+    station_id: 's-danao-01',
+    waybill_number: 'JT88192004811',
+    carrier: 'J&T Express',
+    cod_amount: 180.0,
+    cash_deposited: 200.0,
+    change_due: 20.0,
+    current_status: 'RECEIVED_LOGGED',
+    receipt_image_uri: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=800&q=80',
+    payment_pinged_at: '2026-03-16T14:30:00Z',
+    payment_staff_id: 'STAFF-0488',
+    payment_station_code: 'CTU-DANAO-MAIN-HUB',
+    claim_pinged_at: null, // Ready for batch pickup test!
+    created_at: '2026-03-16T13:10:00Z',
+    updated_at: '2026-03-16T15:20:00Z',
     recipient_name: 'John Vince Keyed',
     recipient_school_id: 'CTU-2024-8841',
   },
@@ -39,6 +65,10 @@ export const INITIAL_PARCELS: ParcelRow[] = [
     cash_deposited: 620.0,
     change_due: 0.0,
     current_status: 'FUNDED',
+    receipt_image_uri: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=800&q=80',
+    payment_pinged_at: '2026-03-16T10:45:00Z',
+    payment_staff_id: 'STAFF-0488',
+    payment_station_code: 'CTU-DANAO-MAIN-HUB',
     claim_pinged_at: null,
     created_at: '2026-03-16T10:15:00Z',
     updated_at: '2026-03-16T11:00:00Z',
@@ -55,6 +85,10 @@ export const INITIAL_PARCELS: ParcelRow[] = [
     cash_deposited: 0.0,
     change_due: -215.0,
     current_status: 'STAGED',
+    receipt_image_uri: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=800&q=80',
+    payment_pinged_at: null, // Unpinged! Staff cannot interact until client scans Hub QR
+    payment_staff_id: null,
+    payment_station_code: null,
     claim_pinged_at: null,
     created_at: '2026-03-16T15:30:00Z',
     updated_at: '2026-03-16T15:30:00Z',
@@ -71,6 +105,10 @@ export const INITIAL_PARCELS: ParcelRow[] = [
     cash_deposited: 0.0,
     change_due: 0.0,
     current_status: 'CLAIMED',
+    receipt_image_uri: null,
+    payment_pinged_at: '2026-03-14T11:15:00Z',
+    payment_staff_id: 'STAFF-0488',
+    payment_station_code: 'CTU-DANAO-MAIN-HUB',
     claim_pinged_at: '2026-03-15T09:12:00Z',
     created_at: '2026-03-14T11:00:00Z',
     updated_at: '2026-03-15T09:15:00Z',
@@ -89,7 +127,7 @@ export const INITIAL_VISUAL_LOGS: VisualLogRow[] = [
     ai_bypassed: false,
     package_condition: 'INTACT',
     confidence_score: 0.985,
-    verified_by_staff_id: 'staff-terminal-01',
+    verified_by_staff_id: 'STAFF-0488',
     verified_at: '2026-03-16T16:43:00Z',
   },
 ];
@@ -100,7 +138,7 @@ export const INITIAL_LEDGER: EscrowLedgerRow[] = [
     parcel_id: 'p-101',
     amount: 500.0,
     transaction_type: 'DEPOSIT',
-    staff_session_id: 'sess-danao-88',
+    staff_session_id: 'STAFF-0488',
     committed_at: '2026-03-16T14:30:00Z',
   },
   {
@@ -108,7 +146,7 @@ export const INITIAL_LEDGER: EscrowLedgerRow[] = [
     parcel_id: 'p-101',
     amount: 340.0,
     transaction_type: 'DISBURSE_COURIER',
-    staff_session_id: 'sess-danao-88',
+    staff_session_id: 'STAFF-0488',
     committed_at: '2026-03-16T16:42:00Z',
   },
   {
@@ -116,7 +154,7 @@ export const INITIAL_LEDGER: EscrowLedgerRow[] = [
     parcel_id: 'p-102',
     amount: 620.0,
     transaction_type: 'DEPOSIT',
-    staff_session_id: 'sess-danao-88',
+    staff_session_id: 'STAFF-0488',
     committed_at: '2026-03-16T11:00:00Z',
   },
 ];

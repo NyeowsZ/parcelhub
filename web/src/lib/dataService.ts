@@ -1,14 +1,19 @@
 import { supabase, isSupabaseConfigured } from './supabase';
-import { ParcelRow, VisualLogRow, EscrowLedgerRow } from '../types/database';
+import { ParcelRow, VisualLogRow, EscrowLedgerRow, SystemConfig } from '../types/database';
 import {
   INITIAL_PARCELS,
   INITIAL_VISUAL_LOGS,
   INITIAL_LEDGER,
+  INITIAL_CONFIG,
 } from './store';
 
 let localParcels = [...INITIAL_PARCELS];
 let localVisualLogs = [...INITIAL_VISUAL_LOGS];
 let localLedger = [...INITIAL_LEDGER];
+let localConfig: SystemConfig = {
+  ai_user_receipt_ocr: INITIAL_CONFIG.ai_user_receipt_ocr,
+  ai_staff_intake_precheck: INITIAL_CONFIG.ai_staff_intake_precheck,
+};
 
 export const DataService = {
   isLive: () => isSupabaseConfigured(),
@@ -80,18 +85,105 @@ export const DataService = {
   },
 
   /**
-   * Cash-In: Advance from STAGED -> FUNDED
+   * Fetch system configuration (independent AI settings)
    */
-  async commitCashIn(parcelId: string, cashDeposited: number): Promise<void> {
-    const change = cashDeposited; // will be computed against cod_amount in DB or locally
+  async getSystemConfig(): Promise<SystemConfig> {
+    if (!isSupabaseConfigured()) {
+      return { ...localConfig };
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('system_config')
+        .select('config_key, config_value');
+
+      if (error || !data) return { ...localConfig };
+
+      const cfg: SystemConfig = { ...localConfig };
+      data.forEach((row: any) => {
+        if (row.config_key === 'ai_user_receipt_ocr') {
+          cfg.ai_user_receipt_ocr = Boolean(row.config_value?.enabled);
+        }
+        if (row.config_key === 'ai_staff_intake_precheck') {
+          cfg.ai_staff_intake_precheck = Boolean(row.config_value?.enabled);
+        }
+      });
+      localConfig = cfg;
+      return cfg;
+    } catch {
+      return { ...localConfig };
+    }
+  },
+
+  /**
+   * Update system config toggle
+   */
+  async updateConfigToggle(
+    key: 'ai_user_receipt_ocr' | 'ai_staff_intake_precheck',
+    enabled: boolean
+  ): Promise<SystemConfig> {
+    localConfig[key] = enabled;
+
+    if (isSupabaseConfigured()) {
+      await supabase.from('system_config').upsert({
+        config_key: key,
+        config_value: { enabled },
+        updated_at: new Date().toISOString(),
+      });
+    }
+
+    return { ...localConfig };
+  },
+
+  /**
+   * Trigger payment ping from student
+   */
+  async commitPaymentPing(parcelId: string): Promise<void> {
+    const now = new Date().toISOString();
+
+    if (isSupabaseConfigured()) {
+      await supabase
+        .from('parcels')
+        .update({
+          payment_pinged_at: now,
+          updated_at: now,
+        })
+        .eq('parcel_id', parcelId);
+    }
+
+    localParcels = localParcels.map((p) => {
+      if (p.parcel_id === parcelId) {
+        return {
+          ...p,
+          payment_pinged_at: now,
+          updated_at: now,
+        };
+      }
+      return p;
+    });
+  },
+
+  /**
+   * Cash-In: Advance from STAGED -> FUNDED
+   * Enforces that student must have pinged, cash >= COD, stamps staff ID
+   */
+  async commitCashIn(
+    parcelId: string,
+    cashDeposited: number,
+    staffId: string = 'STAFF-0488',
+    stationCode: string = 'CTU-DANAO-MAIN-HUB'
+  ): Promise<void> {
+    const now = new Date().toISOString();
 
     if (isSupabaseConfigured()) {
       await supabase
         .from('parcels')
         .update({
           cash_deposited: cashDeposited,
+          payment_staff_id: staffId,
+          payment_station_code: stationCode,
           current_status: 'FUNDED',
-          updated_at: new Date().toISOString(),
+          updated_at: now,
         })
         .eq('parcel_id', parcelId);
 
@@ -99,23 +191,34 @@ export const DataService = {
         parcel_id: parcelId,
         amount: cashDeposited,
         transaction_type: 'DEPOSIT',
-        staff_session_id: 'ST-0488',
-        committed_at: new Date().toISOString(),
+        staff_session_id: staffId,
+        committed_at: now,
       });
     }
 
-    // Also update local cache
+    // Update local cache
     localParcels = localParcels.map((p) => {
       if (p.parcel_id === parcelId) {
         return {
           ...p,
           cash_deposited: cashDeposited,
           change_due: cashDeposited - p.cod_amount,
+          payment_staff_id: staffId,
+          payment_station_code: stationCode,
           current_status: 'FUNDED',
-          updated_at: new Date().toISOString(),
+          updated_at: now,
         };
       }
       return p;
+    });
+
+    localLedger.unshift({
+      transaction_id: `tx-${Date.now()}`,
+      parcel_id: parcelId,
+      amount: cashDeposited,
+      transaction_type: 'DEPOSIT',
+      staff_session_id: staffId,
+      committed_at: now,
     });
   },
 
@@ -128,14 +231,18 @@ export const DataService = {
     condition: 'INTACT' | 'DAMAGED' | 'TAMPERED',
     confidence: number,
     imageUri: string,
-    aiBypassed: boolean
+    aiBypassed: boolean,
+    exactDisbursed: number = 0,
+    staffId: string = 'STAFF-0488'
   ): Promise<void> {
+    const now = new Date().toISOString();
+
     if (isSupabaseConfigured()) {
       await supabase
         .from('parcels')
         .update({
           current_status: 'RECEIVED_LOGGED',
-          updated_at: new Date().toISOString(),
+          updated_at: now,
         })
         .eq('parcel_id', parcelId);
 
@@ -147,9 +254,19 @@ export const DataService = {
         ai_bypassed: aiBypassed,
         package_condition: condition,
         confidence_score: confidence,
-        verified_by_staff_id: 'ST-0488',
-        verified_at: new Date().toISOString(),
+        verified_by_staff_id: staffId,
+        verified_at: now,
       });
+
+      if (exactDisbursed > 0) {
+        await supabase.from('escrow_ledger').insert({
+          parcel_id: parcelId,
+          amount: exactDisbursed,
+          transaction_type: 'DISBURSE_COURIER',
+          staff_session_id: staffId,
+          committed_at: now,
+        });
+      }
     }
 
     localParcels = localParcels.map((p) => {
@@ -157,7 +274,7 @@ export const DataService = {
         return {
           ...p,
           current_status: 'RECEIVED_LOGGED',
-          updated_at: new Date().toISOString(),
+          updated_at: now,
         };
       }
       return p;
@@ -172,31 +289,48 @@ export const DataService = {
       ai_bypassed: aiBypassed,
       package_condition: condition,
       confidence_score: confidence,
-      verified_by_staff_id: 'ST-0488',
-      verified_at: new Date().toISOString(),
+      verified_by_staff_id: staffId,
+      verified_at: now,
     });
+
+    if (exactDisbursed > 0) {
+      localLedger.unshift({
+        transaction_id: `tx-disb-${Date.now()}`,
+        parcel_id: parcelId,
+        amount: exactDisbursed,
+        transaction_type: 'DISBURSE_COURIER',
+        staff_session_id: staffId,
+        committed_at: now,
+      });
+    }
   },
 
   /**
    * Atomic Claim Handshake: Advance from RECEIVED_LOGGED -> CLAIMED
+   * Supports batch release for multiple parcel IDs!
    */
-  async executeClaim(parcelId: string): Promise<void> {
+  async executeClaim(parcelIds: string | string[], staffId: string = 'STAFF-0488'): Promise<void> {
+    const ids = Array.isArray(parcelIds) ? parcelIds : [parcelIds];
+    const now = new Date().toISOString();
+
     if (isSupabaseConfigured()) {
-      await supabase
-        .from('parcels')
-        .update({
-          current_status: 'CLAIMED',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('parcel_id', parcelId);
+      for (const id of ids) {
+        await supabase
+          .from('parcels')
+          .update({
+            current_status: 'CLAIMED',
+            updated_at: now,
+          })
+          .eq('parcel_id', id);
+      }
     }
 
     localParcels = localParcels.map((p) => {
-      if (p.parcel_id === parcelId) {
+      if (ids.includes(p.parcel_id)) {
         return {
           ...p,
           current_status: 'CLAIMED',
-          updated_at: new Date().toISOString(),
+          updated_at: now,
         };
       }
       return p;
@@ -204,7 +338,38 @@ export const DataService = {
   },
 
   /**
-   * Subscribe to live Supabase Realtime channel for instant claim ping updates
+   * Trigger Claim Ping for multiple parcels
+   */
+  async dispatchClaimPing(parcelIds: string | string[]): Promise<void> {
+    const ids = Array.isArray(parcelIds) ? parcelIds : [parcelIds];
+    const now = new Date().toISOString();
+
+    if (isSupabaseConfigured()) {
+      for (const id of ids) {
+        await supabase
+          .from('parcels')
+          .update({
+            claim_pinged_at: now,
+            updated_at: now,
+          })
+          .eq('parcel_id', id);
+      }
+    }
+
+    localParcels = localParcels.map((p) => {
+      if (ids.includes(p.parcel_id)) {
+        return {
+          ...p,
+          claim_pinged_at: now,
+          updated_at: now,
+        };
+      }
+      return p;
+    });
+  },
+
+  /**
+   * Subscribe to live Supabase Realtime channel for instant sync
    */
   subscribeToChanges(onUpdate: () => void) {
     if (!isSupabaseConfigured()) return () => {};

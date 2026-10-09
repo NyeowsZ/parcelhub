@@ -366,3 +366,15 @@ export const HandshakeIcon: React.FC<IconProps> = ({
     />
   </Svg>
 );
+
+export const LockIcon: React.FC<IconProps> = ({
+  size = 22,
+  color = Colors.structure.textPrimary,
+  strokeWidth = 2,
+}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Rect x="3" y="11" width="18" height="11" rx="2" ry="2" stroke={color} strokeWidth={strokeWidth} />
+    <Path d="M7 11V7a5 5 0 0110 0v4" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+

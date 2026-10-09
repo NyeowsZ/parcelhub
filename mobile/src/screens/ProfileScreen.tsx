@@ -19,7 +19,19 @@ import {
   HubStationIcon,
 } from '../components/common/Icons';
 
-export const ProfileScreen: React.FC = () => {
+import { UserProfile } from '../types/auth';
+
+interface ProfileScreenProps {
+  user?: UserProfile | null;
+  onSignOut?: () => void;
+  onLockSession?: () => void;
+}
+
+export const ProfileScreen: React.FC<ProfileScreenProps> = ({
+  user,
+  onSignOut,
+  onLockSession,
+}) => {
   const insets = useSafeAreaInsets();
   const [pushEnabled, setPushEnabled] = useState(true);
 
@@ -40,15 +52,17 @@ export const ProfileScreen: React.FC = () => {
         {/* Student Profile Identity Card */}
         <View style={[styles.profileCard, Shadows.level2]}>
           <View style={styles.avatarBox}>
-            <Text style={styles.avatarInitials}>JV</Text>
+            <Text style={styles.avatarInitials}>
+              {user?.full_name?.substring(0, 2).toUpperCase() || 'JV'}
+            </Text>
           </View>
 
           <View style={styles.profileDetails}>
-            <Text style={styles.studentName}>John Vince Keyed</Text>
-            <Text style={styles.studentEmail}>johnvincekeyed@ctu.edu.ph</Text>
+            <Text style={styles.studentName}>{user?.full_name || 'John Vince Keyed'}</Text>
+            <Text style={styles.studentEmail}>{user?.email || 'johnvincekeyed@ctu.edu.ph'}</Text>
 
             <View style={styles.schoolIdBadge}>
-              <Text style={styles.schoolIdText}>ID: CTU-2024-8841</Text>
+              <Text style={styles.schoolIdText}>ID: {user?.school_id || 'CTU-2024-8841'}</Text>
             </View>
           </View>
         </View>
@@ -147,13 +161,24 @@ export const ProfileScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* Logout / Switch Session */}
-        <Button
-          label="Sign Out"
-          onPress={() => Alert.alert('Session', 'Signed out from student profile.')}
-          variant="secondary"
-          style={{ marginTop: 8 }}
-        />
+        {/* Lock Session & Sign Out Buttons */}
+        <View style={{ gap: 10, marginTop: 8 }}>
+          {onLockSession && (
+            <Button
+              label="Lock Session (Require MPIN)"
+              onPress={onLockSession}
+              variant="secondary"
+            />
+          )}
+
+          {onSignOut && (
+            <Button
+              label="Sign Out Account"
+              onPress={onSignOut}
+              variant="secondary"
+            />
+          )}
+        </View>
       </ScrollView>
     </View>
   );

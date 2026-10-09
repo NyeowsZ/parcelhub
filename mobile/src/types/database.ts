@@ -40,9 +40,20 @@ export interface ParcelRow {
   cash_deposited: number; // DECIMAL(10,2)
   change_due: number; // GENERATED ALWAYS AS (cash_deposited - cod_amount)
   current_status: ParcelStatus;
+  receipt_image_uri?: string | null;
+  payment_pinged_at?: string | null;
+  payment_staff_id?: string | null;
+  payment_station_code?: string | null;
   claim_pinged_at?: string | null; // Populates when student scans hub QR
   created_at: string;
   updated_at: string;
+  recipient_name?: string;
+  recipient_school_id?: string;
+}
+
+export interface SystemConfig {
+  ai_user_receipt_ocr: boolean;
+  ai_staff_intake_precheck: boolean;
 }
 
 export interface VisualLogRow {

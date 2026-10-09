@@ -15,8 +15,14 @@
   1.  Valid, unexpired User Dynamic Token (MPIN-generated).
   2.  Active Staff Session ID.
   3.  Visual logging record created.
+- Manual handover release can NEVER be prompted unless the client prompted the release.
+- A package status can NEVER update to `CLAIMED` without:
+  1. Active Staff Session ID.
+  2. Visual logging record created.
 
 #### 4. Identity Decoupling Invariant
 
 - Couriers only see: Waybill tracking number + exact cash amount.
 - Internal student identity/MPIN is strictly zero-knowledge to couriers.
+
+

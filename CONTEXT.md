@@ -1,202 +1,72 @@
-### System Architecture Context: ParcelHub
+# ParcelHub: On-The-Go Runtime Context & Architecture Log (`context.md`)
 
-**System Classification:** State-Driven Asynchronous Escrow and Micro-Logistics Management System
-
-**Primary Target Environment:** Higher Education Campus Terminal Distribution (CTU Danao Campus)
-
-**Core Objective:** Decouple synchronous last-mile delivery handovers through a deterministic, zero-trust escrow model that eliminates cognitive load and behavioral uncertainty without assuming financial liability.
+> **Authoritative Runtime & Architectural Log**
+> Updated continuously during development to track operational invariants, auth flows, server configurations, skills, and rules.
 
 ---
 
-### Core Architectural Roles
+## 1. Core Operating Rules & Invariants
 
-```
-[ External Domain ]          [ Escrow Intermediary ]             [ Internal Domain ]
-  Courier / Rider   <------->  Staff Terminal / Hub Hub Node  <----->  Recipient (Student/Faculty)
- (Waybill + COD Only)          (Verification & Disbursal)            (App / Auth / Claim Token)
+### Invariant 1: Mandatory Authentication Gates
+1. **Mobile (Student Tier)**:
+   - **Account Credential Gate**: Must register/login with School ID (`CTU-YYYY-XXXX`), Email (`@ctu.edu.ph`), and Password.
+   - **Session MPIN Gate**: On every app launch/logon, the user is gated by a 6-digit MPIN before gaining access to the dashboard, orders, or active data.
+   - **Action Authorization Gate**: Releasing consignments requires re-validating the 6-digit MPIN.
+2. **Web (Counter Operator Tier)**:
+   - **Staff Credential Gate**: Desk terminal operations are strictly protected. Staff must log in with Staff ID/Email (`staff.danao@ctu.edu.ph` / `STAFF-0488`) and Staff PIN.
+   - Anonymous counter operations are strictly prohibited.
+   - All financial handshakes stamp `payment_staff_id` and `verified_by_staff_id`.
 
-```
+### Invariant 2: Independent AI Server Controls (`system_config`)
+- **`ai_user_receipt_ocr`**:
+  - Gating student order creation receipt OCR.
+  - If **Disabled**: App skips screenshot upload/analysis and falls back directly to manual input fields.
+  - If **Enabled**: App prompts for order receipt screenshot (containing Waybill, Recipient Name, Amount). Consignment record is anchored in DB first to lock its ID, Gemini OCR validates and extracts the fields, and proceeds to an editable confirmation screen.
+- **`ai_staff_intake_precheck`**:
+  - Gating counter parcel intake verification.
+  - Independent of `ai_user_receipt_ocr`.
+  - If **Enabled**: Staff scans physical parcel with counter camera, Gemini verifies waybill match and intact condition.
+  - If **Disabled**: Staff conducts manual optical check without blocking AI requirement.
 
-1. **Client Interface (Recipient):**
+### Invariant 3: Station Payment Ping Invariant (Counter Cash-In Gate)
+- **Rule**: Staff **CAN NEVER** interact with, accept cash for, or fund an unpaid consignment (`STAGED`) unless the student has physically checked in at the desk and transmitted a payment ping (`payment_pinged_at != null`).
+- **Trigger**: Student scans Station QR or types Station ID (`CTU-DANAO-MAIN-HUB`) on their mobile device.
+- **Staff Handshake**:
+  - Staff manually enters cash received from student.
+  - **Solvency Invariant**: `cash_deposited >= cod_amount` (Zero-credit escrow: hub never fronts money).
+  - Terminal commits status to `FUNDED`, recording `payment_staff_id`, `payment_station_code`, and timestamp.
+  - Student app updates in real-time showing posted payment details (Hub, Staff Account, Amount Deposited, Change Due).
 
-- Pre-registers expected consignments via tracking/waybill ingestion.
-- Generates time-bounded, cryptographically signed dynamic QR tokens gated by a 6-digit user MPIN.
-- Maintains visibility over state transitions without requiring real-time external carrier tracking.
+### Invariant 4: Courier Payout & Visual Intake
+- Staff selects funded envelope, verifies courier waybill (AI OCR or manual depending on `ai_staff_intake_precheck`).
+- Staff inputs exact cash amount paid/disbursed to courier from envelope.
+- Status advances to `RECEIVED_LOGGED` and dispatches push notification to recipient.
 
-2. **Operator Interface (Hub Staff Node):**
-
-- Acts as the physical and transactional intermediary at campus entry points.
-- Executes the physical-to-digital validation pipeline: physical cash acceptance, courier handover, visual intake logging, and authenticated parcel release.
-
-3. **External Courier Interface (Decoupled Perimeter):**
-
-- Treats ParcelHub strictly as an authenticated drop-off point.
-- Interacts solely through waybill tracking matching and exact-amount cash reconciliation.
-
----
-
-### Finite State Machine (FSM) Specification
-
-The system operates strictly as a monotonic directed graph with zero state reversibility or bypass routes.
-
-```
-       [ Client Pre-Registers ]
-                  │
-                  ▼
-              ┌───────┐
-              │ STAGED│
-              └───────┘
-                  │  Staff verifies physical cash deposit (cash_deposited >= courier_cod_amount)
-                  │  Generates Ledger Transaction ID
-                  ▼
-              ┌────────┐
-              │ FUNDED │
-              └────────┘
-                  │  Courier arrives; Staff matches Waybill
-                  │  Physical cash disbursed to Courier
-                  │  Camera module executes Visual Logging Record (Image + Metadata)
-                  ▼
-          ┌─────────────────┐
-          │ RECEIVED_LOGGED │
-          └─────────────────┘
-                  │  Recipient presents unexpired Dynamic QR (MPIN-derived)
-                  │  Staff scans token using active Staff Session
-                  │  Atomic Handshake validates and commits release
-                  ▼
-              ┌─────────┐
-              │ CLAIMED │  (Terminal State)
-              └─────────┘
-
-```
-
-#### State Definitions & Constraints:
-
-- **`STAGED`:** The record is initialized. Metadata exists (tracking number, declared courier COD value, recipient user ID). The hub holds **no liability**; the courier cannot be paid.
-- **`FUNDED`:** Escrow balance is locked. The hub holds verified physical cash deposited by the user where `cash_deposited >= courier_cod_amount`. Status transition requires a Staff deposit session.
-- **`RECEIVED_LOGGED`:** Parcel is in physical hub custody. The courier has received payment, and the system has committed a visual audit payload (image hash, timestamp, optical/visual tracking tag, staff ID). Automated notification dispatches to the client.
-- **`CLAIMED`:** The terminal state. Custody transferred to recipient. The lifecycle closes permanently.
+### Invariant 5: Multi-Parcel Claiming & Atomic Release Gate
+- **Mobile Batch Selection**: Recipient can select **one or multiple** parcels in `RECEIVED_LOGGED` state for pickup.
+- **Handshake Dispatch**: Student enters 6-digit MPIN. Upon validation, claim ping is dispatched across all selected consignments (`claim_pinged_at != null`).
+- **Desk Release Gate**: Staff handover button is **strictly locked** until the student's claim ping is active. Staff cannot release unpinged consignments.
+- Staff hands over parcels + envelope change, committing status to `CLAIMED`.
 
 ---
 
-### Formal Enforcement of Invariants
+## 2. Active Development Log
 
-```
-                ┌────────────────────────────────────────────────────────┐
-                │               ParcelHub Validation Engine              │
-                └────────────────────────────────────────────────────────┘
-                                             │
-      ┌──────────────────┬───────────────────┴───────────────────┬──────────────────┐
-      ▼                  ▼                                       ▼                  ▼
-[Solvency Engine]  [State Gatekeeper]                     [Atomic Handshake]   [Zero-Knowledge Filter]
-- Evaluates:        - Evaluates:                          - Requires:          - Redacts:
-  cash_balance >=     Strict current_state -> next_state    1. Dynamic Token     Student Name, ID,
-  cod_amount          monotonic mapping                     2. Staff Session     Contact Details from
-- Hard block on     - Prevents state skips                  3. Visual Log Hash   Courier-facing views
-  disbursement        (e.g., STAGED -> RECEIVED)          - Atomic DB commit
-
-```
-
-#### 1. Solvency Invariant (Zero-Credit Escrow)
-
-- **Rule:** $Balance_{\text{escrow}} - Amount_{\text{COD}} \ge 0$ at all execution points.
-- **Backend Assertion:** Staff confirmation endpoints for courier payout trigger a strict database-level check:
-
-```sql
-CHECK (deposit_balance >= cod_amount AND deposit_status = 'LOCKED');
-
-```
-
-- **Failure Mode:** If `cash_deposited < courier_cod_amount`, payout execution throws an unhandled constraint exception, terminating the transaction before receipt validation.
-
-#### 2. State Progression Invariant (Monotonic Flow)
-
-- **Rule:** Given state vector $S = \{\text{STAGED}, \text{FUNDED}, \text{RECEIVED\_LOGGED}, \text{CLAIMED}\}$, transitions are legal if and only if:
-
-$$\text{NextState}(S_i) = S_{i+1}$$
-
-- **Backend Assertion:** Update queries enforce current-state matching:
-
-```sql
-UPDATE parcels
-SET status = 'FUNDED'
-WHERE id = :parcel_id AND status = 'STAGED';
-
-```
-
-- **Failure Mode:** Any attempt to process a parcel to `RECEIVED_LOGGED` while in `STAGED` produces a zero-row update, rejecting the intake.
-
-#### 3. Release Invariant (Atomic Handshake)
-
-- **Rule:** Custody resolution occurs inside an atomic transaction requiring three cryptographic and runtime primitives:
-
-1. `User_Token`: An unexpired, single-use, HMAC/time-gated token decrypted via recipient MPIN.
-2. `Staff_Session`: An authenticated JWT tied to active terminal operator credentials.
-3. `Visual_Log_Ref`: Foreign key reference to an immutable visual verification record.
-
-- **Execution Flow:**
-
-```python
-def release_parcel(parcel_id, dynamic_token, staff_session_id):
-    with db.transaction():
-        assert verify_staff_session(staff_session_id)
-        assert verify_user_dynamic_token(dynamic_token, parcel_id)
-        assert exists_visual_record(parcel_id)
-
-        commit_status_change(parcel_id, from_state='RECEIVED_LOGGED', to_state='CLAIMED')
-        invalidate_token(dynamic_token)
-
-```
-
-#### 4. Identity Decoupling Invariant (Zero-Knowledge Perimeter)
-
-- **Rule:** External courier views expose strictly operational metadata: `Waybill_Tracking_ID`, `Payable_COD_Amount`, and `ParcelHub_Station_ID`.
-- **Data Sanitization:** The public courier-intake API projection strips recipient name, student ID, program, mobile phone, and internal security tokens. No recipient-identifying data is persisted on courier physical paper slips generated by the hub.
+| Timestamp | Phase | Change Description | Status |
+|-----------|-------|--------------------|--------|
+| 2026-10-10 | Auth & Invariants | Created living rulebook `SYSTEM_RULES.md` and runtime log `context.md`. | Verified |
+| 2026-10-10 | Schema Update | Added independent AI configs, `receipt_image_uri`, `payment_pinged_at`, `payment_staff_id`, and `payment_station_code` in `web/schema.sql`. | Verified |
+| 2026-10-10 | Web Auth | Implemented `StaffAuthModal` and session store gating desk terminal operations. | Verified |
+| 2026-10-10 | Mobile Auth | Implemented `AuthScreen` (Register/Login) and `MpinLockScreen` gating app launch. | Verified |
+| 2026-10-10 | Mobile Order | Implemented 2-step screenshot upload + Gemini OCR with server AI toggle check and DB anchoring. | Verified |
+| 2026-10-10 | Payment Ping | Implemented station QR scan / Station ID ping for `STAGED` orders; locked unpinged orders on desk terminal. | Verified |
+| 2026-10-10 | Multi-Claim | Implemented multi-select for `RECEIVED_LOGGED` parcels and batch claim ping dispatch. | Verified |
+| 2026-10-10 | Build Verification | Verified Next.js 16 production build (`npm run build`) and Expo TypeScript (`npx tsc --noEmit`). | Verified |
 
 ---
 
-### Core Data Schema Blueprint
-
-```
-users
-  ├── user_id (UUID, PK)
-  ├── school_id (VARCHAR, UNIQUE)
-  ├── mpin_hash (VARCHAR)
-  └── created_at (TIMESTAMP)
-
-parcels
-  ├── parcel_id (UUID, PK)
-  ├── user_id (UUID, FK -> users.user_id)
-  ├── waybill_number (VARCHAR, INDEX)
-  ├── cod_amount (DECIMAL(10,2))
-  ├── cash_deposited (DECIMAL(10,2), DEFAULT 0.00)
-  ├── current_status (ENUM: STAGED, FUNDED, RECEIVED_LOGGED, CLAIMED)
-  └── created_at (TIMESTAMP)
-
-visual_logs
-  ├── log_id (UUID, PK)
-  ├── parcel_id (UUID, FK -> parcels.parcel_id)
-  ├── image_storage_uri (VARCHAR)
-  ├── capture_hash_sha256 (VARCHAR)
-  ├── staff_id (UUID, FK -> staff_accounts.staff_id)
-  └── logged_at (TIMESTAMP)
-
-escrow_ledger
-  ├── transaction_id (UUID, PK)
-  ├── parcel_id (UUID, FK -> parcels.parcel_id)
-  ├── amount (DECIMAL(10,2))
-  ├── transaction_type (ENUM: DEPOSIT, DISBURSE_COURIER, REFUND_OVERPAY)
-  ├── staff_session_id (VARCHAR)
-  └── committed_at (TIMESTAMP)
-
-```
-
----
-
-### Defensive Architecture Matrix
-
-| Attack / Failure Vector                                            | Enforced Invariant  | System Prevention Layer                                                                                                             |
-| ------------------------------------------------------------------ | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| **Short-Deposit Exploit** (User deposits ₱100 for a ₱500 COD)      | Solvency Invariant  | The intake terminal checks `cash_deposited >= courier_cod_amount`. State cannot advance to `FUNDED`; courier payout remains locked. |
-| **Skip-Funding Attempt** (Staff logs package arrival directly)     | State Progression   | Database rejects transition from `STAGED` directly to `RECEIVED_LOGGED`. System requires prior row existence in `escrow_ledger`.    |
-| **Unauthorized Pickup / Claim Dispute**                            | Release Invariant   | System blocks transition to `CLAIMED` without a valid dynamic token from user MPIN and an active operator session ID.               |
-| **Social Engineering via Courier** (Courier requests user details) | Identity Decoupling | Staff terminal UI redacts student identifiers; interface presents only waybill confirmation and payout figures.                     |
+## 3. Skills & Engineering Guidelines
+- **Expo / React Native**: SDK 52, New Architecture enabled, modular components with strict TypeScript types.
+- **Next.js 16 App Router**: Turbopack, Tailwind CSS / Vanilla CSS design tokens adhering to `DESIGN_CONTEXT.md` 60-30-10 palette (`#F8FAFC`, `#FFFFFF`, `#0F172A`, `#2563EB`).
+- **Google GenAI**: `@google/genai` SDK using `gemini-2.5-flash` with structured JSON schema outputs.
+- **Zero-Credit Escrow**: Invariant verification on both client and database triggers.

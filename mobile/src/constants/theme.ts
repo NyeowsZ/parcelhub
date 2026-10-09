@@ -17,6 +17,7 @@ export const Colors = {
     inverse: '#0F172A', // High-contrast hero metric card (slate-900)
     glass: 'rgba(255, 255, 255, 0.85)', // Floating bottom nav dock with blur
     glassInverse: 'rgba(15, 23, 42, 0.85)',
+    border: '#E2E8F0', // Aliased for card perimeter borders
   },
 
   // 30% — Structure, Layout & Content
@@ -34,10 +35,12 @@ export const Colors = {
     brandHover: '#1D4ED8', // Active tap state (blue-700)
     brandSoft: '#EFF6FF', // Secondary buttons, icon backdrops (blue-50)
     brandSoftText: '#1D4ED8', // Labels on brand-soft surfaces
+    subtleBlue: '#EFF6FF', // Convenience alias for brandSoft
     
     // Semantic States
     successBg: '#DCFCE7', // Ready to Claim / Claimed badge background (emerald-100)
     successText: '#15803D', // Ready to Claim text (emerald-700)
+    subtleGreen: '#DCFCE7', // Convenience alias for successBg
     warningBg: '#FEF3C7', // Pending / Awaiting Funding badge (amber-100)
     warningText: '#B45309', // Warning text (amber-700)
     error: '#EF4444', // Notification count badge, errors (rose-500)
@@ -46,17 +49,35 @@ export const Colors = {
 
 export const Radius = {
   // Hyper-Rounded Geometric Language (Design System Rule: No sharp corners < 12px)
-  pill: 9999, // Pill buttons, badges, keypad numbers (rounded-full)
-  hero: 28, // Hero summary card, camera frame (rounded-3xl)
-  card: 20, // Activity & parcel cards, modal sheets (rounded-2xl)
-  input: 16, // Input fields (rounded-2xl)
-  badge: 9999, // Micro-tags, pills (rounded-full)
+  pill: 9999,
+  full: 9999,
+  hero: 28,
+  card: 20,
+  xxl: 28,
+  xl: 20,
+  lg: 16,
+  md: 12,
+  sm: 8,
+  input: 16,
+  badge: 9999,
 } as const;
 
 export const Typography = {
   fontFamily: {
-    sans: 'System', // Plus Jakarta Sans / Inter / system-ui
-    mono: 'Courier', // JetBrains Mono / SF Mono for tracking numbers & MPIN
+    sans: 'System',
+    mono: 'Courier',
+  },
+  fontSize: {
+    display: 32,
+    title1: 28,
+    title2: 24,
+    title3: 20,
+    headline: 18,
+    body: 14,
+    subhead: 13,
+    caption: 11,
+    small: 10,
+    tiny: 9,
   },
   sizes: {
     display: { fontSize: 32, lineHeight: 38, fontWeight: '800' as const, letterSpacing: -0.6 },

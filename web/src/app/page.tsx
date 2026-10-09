@@ -10,6 +10,7 @@ import { LedgerTab } from '@/components/tabs/LedgerTab';
 import { PrintStationQrModal } from '@/components/modals/PrintStationQrModal';
 import { EnvelopeSlipModal } from '@/components/modals/EnvelopeSlipModal';
 import { DatabaseModal } from '@/components/DatabaseModal';
+import { StaffAuthModal, StaffSession } from '@/components/StaffAuthModal';
 import { DataService } from '@/lib/dataService';
 import { INITIAL_CONFIG } from '@/lib/store';
 import { ParcelRow, VisualLogRow, EscrowLedgerRow } from '@/types/database';
@@ -20,6 +21,10 @@ export default function Home() {
   const [visualLogs, setVisualLogs] = useState<VisualLogRow[]>([]);
   const [ledger, setLedger] = useState<EscrowLedgerRow[]>([]);
   const [config, setConfig] = useState(INITIAL_CONFIG);
+
+  // Authentication: Staff session gating desk operations
+  const [staffSession, setStaffSession] = useState<StaffSession | null>(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   const [activeTab, setActiveTab] = useState<'QUEUE' | 'INTAKE' | 'CASH_IN' | 'LEDGER'>('QUEUE');
   const [isStationQrModalOpen, setIsStationQrModalOpen] = useState(false);
@@ -32,17 +37,51 @@ export default function Home() {
     setTimeout(() => setToastMessage(null), 4500);
   };
 
+  // Check stored staff session on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('parcelhub_staff_session');
+    if (saved) {
+      try {
+        setStaffSession(JSON.parse(saved));
+      } catch {
+        setIsAuthModalOpen(true);
+      }
+    } else {
+      setIsAuthModalOpen(true);
+    }
+  }, []);
+
+  const handleLoginSuccess = (session: StaffSession) => {
+    setStaffSession(session);
+    localStorage.setItem('parcelhub_staff_session', JSON.stringify(session));
+    setIsAuthModalOpen(false);
+    showToast(`Staff authorized: ${session.staffId} (${session.fullName})`);
+  };
+
+  const handleLogoutStaff = () => {
+    localStorage.removeItem('parcelhub_staff_session');
+    setStaffSession(null);
+    setIsAuthModalOpen(true);
+    showToast('Staff logged out. Terminal locked.');
+  };
+
   // Load parcels from Supabase or persistent DataService
   const loadData = useCallback(async () => {
     try {
-      const [p, v, l] = await Promise.all([
+      const [p, v, l, cfg] = await Promise.all([
         DataService.getParcels(),
         DataService.getVisualLogs(),
         DataService.getLedger(),
+        DataService.getSystemConfig(),
       ]);
       setParcels(p);
       setVisualLogs(v);
       setLedger(l);
+      setConfig((prev) => ({
+        ...prev,
+        ai_user_receipt_ocr: cfg.ai_user_receipt_ocr,
+        ai_staff_intake_precheck: cfg.ai_staff_intake_precheck,
+      }));
     } catch (e) {
       console.warn('Data fetch error:', e);
     }
@@ -50,7 +89,6 @@ export default function Home() {
 
   useEffect(() => {
     loadData();
-    // Subscribe to live Supabase Realtime channel
     const unsubscribe = DataService.subscribeToChanges(() => {
       loadData();
       showToast('⚡ Live Realtime Update received from Supabase!');
@@ -58,9 +96,28 @@ export default function Home() {
     return () => unsubscribe();
   }, [loadData]);
 
+  // Toggle independent AI settings
+  const handleToggleUserReceiptAi = async () => {
+    const newVal = !config.ai_user_receipt_ocr;
+    await DataService.updateConfigToggle('ai_user_receipt_ocr', newVal);
+    setConfig((c) => ({ ...c, ai_user_receipt_ocr: newVal }));
+    showToast(`Student Receipt AI OCR is now ${newVal ? 'ENABLED' : 'DISABLED'}`);
+  };
+
+  const handleToggleStaffIntakeAi = async () => {
+    const newVal = !config.ai_staff_intake_precheck;
+    await DataService.updateConfigToggle('ai_staff_intake_precheck', newVal);
+    setConfig((c) => ({ ...c, ai_staff_intake_precheck: newVal }));
+    showToast(`Staff Intake AI Precheck is now ${newVal ? 'ENABLED' : 'DISABLED'}`);
+  };
+
   // 1. Handle Cash-In Transition: STAGED -> FUNDED
-  const handleCommitCashIn = async (parcelId: string, cashDeposited: number) => {
-    await DataService.commitCashIn(parcelId, cashDeposited);
+  const handleCommitCashIn = async (
+    parcelId: string,
+    cashDeposited: number,
+    staffId: string
+  ) => {
+    await DataService.commitCashIn(parcelId, cashDeposited, staffId);
     await loadData();
     showToast('Physical envelope funded successfully! State advanced to FUNDED.');
   };
@@ -71,7 +128,9 @@ export default function Home() {
     extractedWaybill: string,
     condition: 'INTACT' | 'DAMAGED' | 'TAMPERED',
     confidence: number,
-    imageUri: string
+    imageUri: string,
+    exactDisbursed: number,
+    staffId: string
   ) => {
     await DataService.commitIntake(
       parcelId,
@@ -79,53 +138,55 @@ export default function Home() {
       condition,
       confidence,
       imageUri,
-      !config.ai_required
+      !config.ai_staff_intake_precheck,
+      exactDisbursed,
+      staffId
     );
     await loadData();
-    showToast('Intake logged & verified with Gemini AI! Notification dispatched to recipient.');
+    showToast('Intake logged & envelope disbursed! Notification dispatched to student.');
     setActiveTab('QUEUE');
   };
 
   // 3. Handle Inverted Claim Handshake: RECEIVED_LOGGED -> CLAIMED
-  const handleExecuteClaim = async (parcelId: string) => {
-    const target = parcels.find((p) => p.parcel_id === parcelId);
-    await DataService.executeClaim(parcelId);
+  const handleExecuteClaim = async (parcelIds: string | string[], staffId: string) => {
+    const ids = Array.isArray(parcelIds) ? parcelIds : [parcelIds];
+    await DataService.executeClaim(ids, staffId);
     await loadData();
 
     showToast(
-      `Atomic handover complete! ₱${Math.max(0, target?.change_due || 0).toFixed(2)} change disbursed to ${
-        target?.recipient_name || 'student'
-      }.`
+      `Atomic handover complete! Released ${ids.length} package(s) with cash change to recipient.`
     );
   };
 
-  // 4. Simulate a student scanning the station QR and entering MPIN
-  const handleSimulateClaimPing = () => {
+  // 4. Simulate Student Scanning Station QR to Pay Cash (Unlocks Cash-In Tab)
+  const handleSimulatePaymentPing = async () => {
+    const unpinged = parcels.find((p) => p.current_status === 'STAGED' && !p.payment_pinged_at);
+    if (unpinged) {
+      await DataService.commitPaymentPing(unpinged.parcel_id);
+      await loadData();
+      showToast(`⚡ Payment Ping: Student scanned station QR for ${unpinged.waybill_number}! Unlocked in Cash-In tab.`);
+      setActiveTab('CASH_IN');
+    } else {
+      showToast('All staged parcels already have payment pings active.');
+      setActiveTab('CASH_IN');
+    }
+  };
+
+  // 5. Simulate Student Dispatching Claim Ping
+  const handleSimulateClaimPing = async () => {
     const candidate = parcels.find(
       (p) => p.current_status === 'RECEIVED_LOGGED' && !p.claim_pinged_at
     );
 
     if (candidate) {
-      setParcels((prev) =>
-        prev.map((p) =>
-          p.parcel_id === candidate.parcel_id
-            ? { ...p, claim_pinged_at: new Date().toISOString() }
-            : p
-        )
-      );
+      await DataService.dispatchClaimPing(candidate.parcel_id);
+      await loadData();
       showToast(
-        `🚨 Claim Ping: ${candidate.recipient_name} scanned CTU Danao Hub QR! Populated at top of queue.`
+        `🚨 Claim Ping: ${candidate.recipient_name} entered MPIN & pinged CTU Danao desk! Surfaced at top of queue.`
       );
       setActiveTab('QUEUE');
     } else {
-      setParcels((prev) =>
-        prev.map((p) =>
-          p.parcel_id === 'p-101'
-            ? { ...p, claim_pinged_at: new Date().toISOString() }
-            : p
-        )
-      );
-      showToast('Simulated claim ping dispatched for SPXPH0492817263.');
+      showToast('No unpinged parcels currently awaiting pickup in hub custody.');
       setActiveTab('QUEUE');
     }
   };
@@ -138,12 +199,17 @@ export default function Home() {
     <div className="min-h-screen flex flex-col bg-[#F8FAFC] text-[#0F172A] selection:bg-blue-600 selection:text-white">
       {/* Top Navbar */}
       <Navbar
-        aiRequired={config.ai_required}
-        onToggleAi={() => setConfig((c) => ({ ...c, ai_required: !c.ai_required }))}
+        userReceiptAi={config.ai_user_receipt_ocr}
+        staffIntakeAi={config.ai_staff_intake_precheck}
+        onToggleUserReceiptAi={handleToggleUserReceiptAi}
+        onToggleStaffIntakeAi={handleToggleStaffIntakeAi}
         onOpenStationQrModal={() => setIsStationQrModalOpen(true)}
         onOpenDatabaseModal={() => setIsDatabaseModalOpen(true)}
         onSimulateClaimPing={handleSimulateClaimPing}
+        onSimulatePaymentPing={handleSimulatePaymentPing}
         activePingCount={activePingCount}
+        staffSession={staffSession}
+        onLogoutStaff={handleLogoutStaff}
       />
 
       {/* Main Terminal Workspace */}
@@ -164,7 +230,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* 4 Telemetry Counters (including Hero Metric Card) */}
+        {/* 4 Telemetry Counters */}
         <StatCards
           parcels={parcels}
           onNavigateToQueue={() => setActiveTab('QUEUE')}
@@ -231,6 +297,7 @@ export default function Home() {
           <QueueTab
             parcels={parcels}
             visualLogs={visualLogs}
+            staffSession={staffSession}
             onExecuteClaim={handleExecuteClaim}
           />
         )}
@@ -238,7 +305,8 @@ export default function Home() {
         {activeTab === 'INTAKE' && (
           <IntakeTab
             parcels={parcels}
-            aiRequired={config.ai_required}
+            staffIntakeAi={config.ai_staff_intake_precheck}
+            staffSession={staffSession}
             onCommitIntake={handleCommitIntake}
           />
         )}
@@ -246,6 +314,7 @@ export default function Home() {
         {activeTab === 'CASH_IN' && (
           <CashInTab
             parcels={parcels}
+            staffSession={staffSession}
             onCommitCashIn={handleCommitCashIn}
             onPrintEnvelope={(p) => setSlipModalParcel(p)}
           />
@@ -255,6 +324,12 @@ export default function Home() {
           <LedgerTab parcels={parcels} ledger={ledger} />
         )}
       </main>
+
+      {/* Staff Authentication Modal (Opens when logged out) */}
+      <StaffAuthModal
+        isOpen={isAuthModalOpen}
+        onLoginSuccess={handleLoginSuccess}
+      />
 
       {/* Printable Stationary QR Poster Modal */}
       <PrintStationQrModal

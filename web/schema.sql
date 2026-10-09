@@ -31,9 +31,13 @@ CREATE TABLE IF NOT EXISTS system_config (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Independent AI policy toggles: User Receipt OCR vs Staff Intake Precheck
 INSERT INTO system_config (config_key, config_value)
-VALUES ('ai_intake_rules', '{"ai_required": true}'::jsonb)
-ON CONFLICT (config_key) DO NOTHING;
+VALUES 
+    ('ai_user_receipt_ocr', '{"enabled": true}'::jsonb),
+    ('ai_staff_intake_precheck', '{"enabled": true}'::jsonb)
+ON CONFLICT (config_key) DO UPDATE
+SET config_value = EXCLUDED.config_value;
 
 -- 3. USERS & PROFILES
 CREATE TABLE IF NOT EXISTS users (
@@ -47,6 +51,11 @@ CREATE TABLE IF NOT EXISTS users (
     push_token VARCHAR(255),
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Seed Default Staff Account for Counter Login
+INSERT INTO users (email, full_name, school_id, role, mpin_hash)
+VALUES ('staff.danao@ctu.edu.ph', 'Counter Staff Lead', 'STAFF-0488', 'STAFF', 'hash_123456')
+ON CONFLICT (email) DO NOTHING;
 
 -- 4. HUB STATIONS (Physical Counter Points)
 CREATE TABLE IF NOT EXISTS hub_stations (
@@ -72,11 +81,15 @@ CREATE TABLE IF NOT EXISTS parcels (
     carrier VARCHAR(64),
     recipient_name VARCHAR(255),
     recipient_school_id VARCHAR(64),
+    receipt_image_uri TEXT, -- Screenshot uploaded by student during order creation
     cod_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
     cash_deposited DECIMAL(10,2) NOT NULL DEFAULT 0.00,
     change_due DECIMAL(10,2) GENERATED ALWAYS AS (cash_deposited - cod_amount) STORED,
     current_status parcel_status NOT NULL DEFAULT 'STAGED',
-    claim_pinged_at TIMESTAMPTZ, -- populates when student scans hub QR & enters MPIN
+    payment_pinged_at TIMESTAMPTZ, -- populates when student scans station QR to pay cash
+    payment_staff_id VARCHAR(64), -- staff member who accepted the cash deposit
+    payment_station_code VARCHAR(32), -- hub station where cash was deposited
+    claim_pinged_at TIMESTAMPTZ, -- populates when student enters MPIN to claim package
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     CONSTRAINT chk_solvency CHECK (
