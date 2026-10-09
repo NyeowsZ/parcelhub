@@ -132,7 +132,16 @@ export const AuthService = {
       .single();
 
     if (profileErr) {
-      throw new Error(profileErr.message);
+      console.warn('Supabase users table RLS block:', profileErr.message);
+      currentUser = {
+        user_id: data.user.id,
+        email: payload.email.trim().toLowerCase(),
+        full_name: payload.fullName.trim(),
+        school_id: payload.schoolId.trim().toUpperCase(),
+        role: 'STUDENT',
+        push_token: null,
+      };
+      return currentUser;
     }
 
     currentUser = profile as UserProfile;

@@ -168,10 +168,18 @@ EXCEPTION
 END $$;
 
 -- 10. ROW LEVEL SECURITY (RLS) POLICIES (Idempotent)
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE hub_stations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE parcels ENABLE ROW LEVEL SECURITY;
 ALTER TABLE visual_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE escrow_ledger ENABLE ROW LEVEL SECURITY;
 ALTER TABLE system_config ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Public full access to users" ON users;
+CREATE POLICY "Public full access to users" ON users FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public full access to hub_stations" ON hub_stations;
+CREATE POLICY "Public full access to hub_stations" ON hub_stations FOR ALL USING (true) WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Public full access to parcels" ON parcels;
 CREATE POLICY "Public full access to parcels" ON parcels FOR ALL USING (true) WITH CHECK (true);
