@@ -25,18 +25,25 @@
 }
 
 :root {
+  /* 60% Dominant Canvas (Warm Chalk) */
   --background: #faf9f7;
   --foreground: #0f0f12;
+
+  /* 30% Structural Depth & Surfaces */
   --surface: #ffffff;
   --surface-elevated: #f2f0eb;
   --muted: #f2f0eb;
   --muted-foreground: #5a5a5e;
   --border: #d4d0c8;
   --border-subtle: #f0eee8;
+
+  /* 10% Accent (Laravel Flame Red) */
   --primary: #d9261a;
   --primary-foreground: #ffffff;
   --primary-hover: #ff2d20;
   --ring: #ff2d20;
+
+  /* Semantic Feedback */
   --success: #15803d;
   --success-foreground: #ffffff;
   --success-subtle: #dcfce7;
@@ -49,30 +56,37 @@
 }
 
 .dark {
-  --background: #0f0f12;
+  /* 60% Dominant Canvas (Deep Ink) */
+  --background: #0b0b0f;
   --foreground: #faf9f7;
-  --surface: #141418;
-  --surface-elevated: #1c1c22;
-  --muted: #18181f;
+
+  /* 30% Structural Depth & Surfaces */
+  --surface: #121218;
+  --surface-elevated: #1a1a24;
+  --muted: #181822;
   --muted-foreground: #a1a1aa;
-  --border: #27272e;
-  --border-subtle: #1b1b21;
+  --border: #272732;
+  --border-subtle: #1c1c26;
+
+  /* 10% Accent (Laravel Flame Glow) */
   --primary: #ff2d20;
-  --primary-foreground: #0f0f12;
+  --primary-foreground: #0b0b0f;
   --primary-hover: #ff4a3d;
   --ring: #ff2d20;
+
+  /* Semantic Feedback */
   --success: #22c55e;
-  --success-foreground: #0f0f12;
+  --success-foreground: #0b0b0f;
   --success-subtle: rgba(34, 197, 94, 0.15);
   --warning: #f59e0b;
-  --warning-foreground: #0f0f12;
+  --warning-foreground: #0b0b0f;
   --warning-subtle: rgba(245, 158, 11, 0.15);
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
   --destructive-subtle: rgba(239, 68, 68, 0.15);
 }
 
-/* Symph Engineering Grid Canvas */
+/* Ambient 200px Engineering Grid Canvas */
 body {
   background-color: var(--background);
   color: var(--foreground);
@@ -83,6 +97,7 @@ body {
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
   margin: 0;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
 .dark body, body.dark {
@@ -99,7 +114,7 @@ code, pre, .font-mono {
 .card-lift {
   position: relative;
   overflow: clip;
-  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease;
 }
 .card-lift:after {
   content: "";
@@ -111,45 +126,49 @@ code, pre, .font-mono {
   transform: translateX(-100%);
 }
 .card-lift:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 16px 36px -12px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(217, 38, 26, 0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 16px 36px -12px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(255, 45, 32, 0.25);
 }
 .card-lift:hover:after {
   transform: translateX(100%);
 }
 
-/* Glassmorphism */
+/* Multi-layer Glassmorphism */
 .glass-card {
-  backdrop-filter: blur(12px) saturate(180%);
-  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
 }
 
 .glass-dock {
   background: rgba(250, 249, 247, 0.85);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-bottom: 1px solid var(--border-subtle);
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.03);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.04);
 }
 
 .dark .glass-dock {
-  background: rgba(15, 15, 18, 0.85);
-  border-bottom: 1px solid var(--border-subtle);
+  background: rgba(18, 18, 24, 0.85);
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.35);
 }
 
-/* Ambient glows */
-.glow-primary {
-  box-shadow: 0 8px 24px -4px rgba(217, 38, 26, 0.35), 0 0 40px rgba(217, 38, 26, 0.15);
+/* Laser-scan HUD line for AI Intake Viewfinder */
+.laser-scanline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #ff2d20, transparent);
+  box-shadow: 0 0 12px #ff2d20, 0 0 24px rgba(255, 45, 32, 0.5);
+  animation: laserScan 2.6s ease-in-out infinite;
 }
 
-.glow-primary-hover:hover {
-  box-shadow: 0 8px 24px -4px rgba(217, 38, 26, 0.45), 0 0 40px rgba(217, 38, 26, 0.2);
-}
-
-@keyframes scrollPulse {
-  0% { transform: translateY(-100%); opacity: 0; }
-  50% { opacity: 1; }
-  100% { transform: translateY(100%); opacity: 0; }
+@keyframes laserScan {
+  0% { top: 5%; opacity: 0; }
+  15% { opacity: 1; }
+  85% { opacity: 1; }
+  100% { top: 95%; opacity: 0; }
 }
 
 @media print {

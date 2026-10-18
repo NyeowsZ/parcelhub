@@ -7,6 +7,10 @@ import { QueueTab } from '@/components/tabs/QueueTab';
 import { IntakeTab } from '@/components/tabs/IntakeTab';
 import { CashInTab } from '@/components/tabs/CashInTab';
 import { LedgerTab } from '@/components/tabs/LedgerTab';
+import { ClaimHandshakeModal } from '@/components/modals/ClaimHandshakeModal';
+import { CourierIntakeModal } from '@/components/modals/CourierIntakeModal';
+import { CashInModal } from '@/components/modals/CashInModal';
+import { ParcelDetailModal } from '@/components/modals/ParcelDetailModal';
 import { PrintStationQrModal } from '@/components/modals/PrintStationQrModal';
 import { EnvelopeSlipModal } from '@/components/modals/EnvelopeSlipModal';
 import { DatabaseModal } from '@/components/DatabaseModal';
@@ -19,22 +23,55 @@ import { UserCheck, Camera, Banknote, History, CheckCircle2 } from 'lucide-react
 export default function Home() {
   const [parcels, setParcels] = useState<ParcelRow[]>([]);
   const [visualLogs, setVisualLogs] = useState<VisualLogRow[]>([]);
-  const [ledger, setLedger] = useState<EscrowLedgerRow[]>([]);
+  const [, setLedger] = useState<EscrowLedgerRow[]>([]);
   const [config, setConfig] = useState(INITIAL_CONFIG);
+
+  // Theme State (Dark by default, persisted in localStorage)
+  const [isDarkMode, setIsDarkMode] = useState(true);
 
   // Authentication: Staff session gating desk operations
   const [staffSession, setStaffSession] = useState<StaffSession | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
+  // Active Tab Workspace
   const [activeTab, setActiveTab] = useState<'QUEUE' | 'INTAKE' | 'CASH_IN' | 'LEDGER'>('QUEUE');
+
+  // Modal State Management
+  const [selectedClaimParcel, setSelectedClaimParcel] = useState<ParcelRow | null>(null);
+  const [selectedIntakeParcel, setSelectedIntakeParcel] = useState<ParcelRow | null>(null);
+  const [selectedCashInParcel, setSelectedCashInParcel] = useState<ParcelRow | null>(null);
+  const [selectedDetailParcel, setSelectedDetailParcel] = useState<ParcelRow | null>(null);
+  const [slipModalParcel, setSlipModalParcel] = useState<ParcelRow | null>(null);
   const [isStationQrModalOpen, setIsStationQrModalOpen] = useState(false);
   const [isDatabaseModalOpen, setIsDatabaseModalOpen] = useState(false);
-  const [slipModalParcel, setSlipModalParcel] = useState<ParcelRow | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 4500);
+  };
+
+  // Theme Management
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('parcelhub_theme');
+    const isDark = savedTheme ? savedTheme === 'dark' : true;
+    setIsDarkMode(isDark);
+    if (isDark) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, []);
+
+  const handleToggleTheme = () => {
+    const nextDark = !isDarkMode;
+    setIsDarkMode(nextDark);
+    localStorage.setItem('parcelhub_theme', nextDark ? 'dark' : 'light');
+    if (nextDark) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
   };
 
   // Check stored staff session on mount
@@ -164,7 +201,7 @@ export default function Home() {
     if (unpinged) {
       await DataService.commitPaymentPing(unpinged.parcel_id);
       await loadData();
-      showToast(`Payment Ping: Student scanned station QR for ${unpinged.waybill_number}! Unlocked in Cash-In tab.`);
+      showToast(`Payment Ping: Student scanned station QR for ${unpinged.waybill_number}! Unlocked in Cash-In.`);
       setActiveTab('CASH_IN');
     } else {
       showToast('All staged parcels already have payment pings active.');
@@ -182,7 +219,7 @@ export default function Home() {
       await DataService.dispatchClaimPing(candidate.parcel_id);
       await loadData();
       showToast(
-        `Claim Ping: ${candidate.recipient_name} entered MPIN & pinged desk! Surfaced at top of queue.`
+        `Claim Ping: ${candidate.recipient_name} entered MPIN & pinged desk! Surfaced in queue.`
       );
       setActiveTab('QUEUE');
     } else {
@@ -197,7 +234,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground selection:bg-primary selection:text-primary-foreground">
-      {/* Top Navbar */}
+      {/* Floating Frosted Header */}
       <Navbar
         userReceiptAi={config.ai_user_receipt_ocr}
         staffIntakeAi={config.ai_staff_intake_precheck}
@@ -210,13 +247,15 @@ export default function Home() {
         activePingCount={activePingCount}
         staffSession={staffSession}
         onLogoutStaff={handleLogoutStaff}
+        isDarkMode={isDarkMode}
+        onToggleTheme={handleToggleTheme}
       />
 
       {/* Main Terminal Workspace */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 pt-6 pb-12">
         {/* Toast Alert Notification */}
         {toastMessage && (
-          <div className="card-lift glass-card mb-6 p-4 rounded-2xl bg-surface/95 text-foreground font-medium text-xs flex items-center justify-between border border-primary/30 shadow-lg animate-in fade-in slide-in-from-top-2">
+          <div className="card-lift glass-card mb-5 p-3.5 rounded-2xl bg-surface/95 text-foreground font-medium text-xs flex items-center justify-between border border-primary/30 shadow-lg animate-in fade-in slide-in-from-top-2">
             <div className="flex items-center gap-2.5">
               <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
               <CheckCircle2 className="w-4 h-4 text-primary" />
@@ -239,22 +278,22 @@ export default function Home() {
           onNavigateToQueue={() => setActiveTab('QUEUE')}
         />
 
-        {/* Primary Operational Tabs (Symph Pill Switcher) */}
-        <nav aria-label="Terminal Workflow Modes" className="flex items-center gap-2 border-b border-border pb-4 mb-6 overflow-x-auto">
+        {/* Segmented Mode Switcher (Pill Switcher) */}
+        <nav aria-label="Terminal Workflow Modes" className="flex items-center gap-1.5 border-b border-border pb-3 mb-5 overflow-x-auto">
           <button
             type="button"
             onClick={() => setActiveTab('QUEUE')}
             aria-label="Switch to Claim Handshake Queue tab"
-            className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-xs font-semibold uppercase tracking-wider transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+            className={`flex items-center gap-2 px-5 py-2 rounded-full text-xs font-semibold uppercase tracking-wider transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
               activeTab === 'QUEUE'
-                ? 'bg-primary text-primary-foreground shadow-[0_4px_16px_rgba(217,38,26,0.35)]'
+                ? 'bg-primary text-primary-foreground shadow-[0_2px_10px_rgba(255,45,32,0.35)]'
                 : 'bg-surface text-muted-foreground hover:text-foreground hover:bg-surface-elevated border border-border'
             }`}
           >
-            <UserCheck className="w-4 h-4" />
+            <UserCheck className="w-3.5 h-3.5" />
             <span>1. Claim Handshake Queue</span>
             {activePingCount > 0 && (
-              <span className="w-5 h-5 rounded-full bg-success text-success-foreground font-black text-[10px] flex items-center justify-center animate-pulse">
+              <span className="w-4 h-4 rounded-full bg-success text-success-foreground font-black text-[9px] flex items-center justify-center animate-pulse">
                 {activePingCount}
               </span>
             )}
@@ -264,13 +303,13 @@ export default function Home() {
             type="button"
             onClick={() => setActiveTab('INTAKE')}
             aria-label="Switch to Courier Arrival & AI Ingestion tab"
-            className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-xs font-semibold uppercase tracking-wider transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+            className={`flex items-center gap-2 px-5 py-2 rounded-full text-xs font-semibold uppercase tracking-wider transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
               activeTab === 'INTAKE'
-                ? 'bg-primary text-primary-foreground shadow-[0_4px_16px_rgba(217,38,26,0.35)]'
+                ? 'bg-primary text-primary-foreground shadow-[0_2px_10px_rgba(255,45,32,0.35)]'
                 : 'bg-surface text-muted-foreground hover:text-foreground hover:bg-surface-elevated border border-border'
             }`}
           >
-            <Camera className="w-4 h-4" />
+            <Camera className="w-3.5 h-3.5" />
             <span>2. Courier Arrival & AI Ingestion</span>
           </button>
 
@@ -278,13 +317,13 @@ export default function Home() {
             type="button"
             onClick={() => setActiveTab('CASH_IN')}
             aria-label="Switch to Cash-In & Envelopes tab"
-            className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-xs font-semibold uppercase tracking-wider transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+            className={`flex items-center gap-2 px-5 py-2 rounded-full text-xs font-semibold uppercase tracking-wider transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
               activeTab === 'CASH_IN'
-                ? 'bg-primary text-primary-foreground shadow-[0_4px_16px_rgba(217,38,26,0.35)]'
+                ? 'bg-primary text-primary-foreground shadow-[0_2px_10px_rgba(255,45,32,0.35)]'
                 : 'bg-surface text-muted-foreground hover:text-foreground hover:bg-surface-elevated border border-border'
             }`}
           >
-            <Banknote className="w-4 h-4" />
+            <Banknote className="w-3.5 h-3.5" />
             <span>3. Cash-In & Envelopes</span>
           </button>
 
@@ -292,13 +331,13 @@ export default function Home() {
             type="button"
             onClick={() => setActiveTab('LEDGER')}
             aria-label="Switch to Envelope Vault Ledger tab"
-            className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-xs font-semibold uppercase tracking-wider transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+            className={`flex items-center gap-2 px-5 py-2 rounded-full text-xs font-semibold uppercase tracking-wider transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
               activeTab === 'LEDGER'
-                ? 'bg-primary text-primary-foreground shadow-[0_4px_16px_rgba(217,38,26,0.35)]'
+                ? 'bg-primary text-primary-foreground shadow-[0_2px_10px_rgba(255,45,32,0.35)]'
                 : 'bg-surface text-muted-foreground hover:text-foreground hover:bg-surface-elevated border border-border'
             }`}
           >
-            <History className="w-4 h-4" />
+            <History className="w-3.5 h-3.5" />
             <span>4. Envelope Vault Ledger</span>
           </button>
         </nav>
@@ -308,41 +347,81 @@ export default function Home() {
           <QueueTab
             parcels={parcels}
             visualLogs={visualLogs}
-            staffSession={staffSession}
-            onExecuteClaim={handleExecuteClaim}
+            onOpenClaimModal={(p) => setSelectedClaimParcel(p)}
+            onOpenDetailModal={(p) => setSelectedDetailParcel(p)}
+            onBatchExecuteClaim={(ids) => handleExecuteClaim(ids, staffSession?.staffId || 'STAFF-0488')}
           />
         )}
 
         {activeTab === 'INTAKE' && (
           <IntakeTab
             parcels={parcels}
-            staffIntakeAi={config.ai_staff_intake_precheck}
-            staffSession={staffSession}
-            onCommitIntake={handleCommitIntake}
+            onOpenIntakeModal={(p) => setSelectedIntakeParcel(p)}
+            onOpenDetailModal={(p) => setSelectedDetailParcel(p)}
           />
         )}
 
         {activeTab === 'CASH_IN' && (
           <CashInTab
             parcels={parcels}
-            staffSession={staffSession}
-            onCommitCashIn={handleCommitCashIn}
-            onPrintEnvelope={(p) => setSlipModalParcel(p)}
+            onOpenCashInModal={(p) => setSelectedCashInParcel(p)}
+            onOpenDetailModal={(p) => setSelectedDetailParcel(p)}
           />
         )}
 
         {activeTab === 'LEDGER' && (
-          <LedgerTab parcels={parcels} ledger={ledger} />
+          <LedgerTab
+            parcels={parcels}
+            onOpenDetailModal={(p) => setSelectedDetailParcel(p)}
+          />
         )}
       </main>
 
-      {/* Staff Authentication Modal (Opens when logged out) */}
+      {/* 1. Dedicated Claim Handshake Modal */}
+      <ClaimHandshakeModal
+        parcel={selectedClaimParcel}
+        visualLog={visualLogs.find((v) => v.parcel_id === selectedClaimParcel?.parcel_id)}
+        isOpen={Boolean(selectedClaimParcel)}
+        onClose={() => setSelectedClaimParcel(null)}
+        onExecuteClaim={handleExecuteClaim}
+        staffSession={staffSession}
+      />
+
+      {/* 2. Dedicated Courier Intake Modal */}
+      <CourierIntakeModal
+        parcel={selectedIntakeParcel}
+        isOpen={Boolean(selectedIntakeParcel)}
+        onClose={() => setSelectedIntakeParcel(null)}
+        staffIntakeAi={config.ai_staff_intake_precheck}
+        staffSession={staffSession}
+        onCommitIntake={handleCommitIntake}
+      />
+
+      {/* 3. Dedicated Cash-In Funding Modal */}
+      <CashInModal
+        parcel={selectedCashInParcel}
+        isOpen={Boolean(selectedCashInParcel)}
+        onClose={() => setSelectedCashInParcel(null)}
+        staffSession={staffSession}
+        onCommitCashIn={handleCommitCashIn}
+        onPrintEnvelope={(p) => setSlipModalParcel(p)}
+      />
+
+      {/* 4. Dedicated PoLP Parcel Detail Inspector Modal */}
+      <ParcelDetailModal
+        parcel={selectedDetailParcel}
+        visualLog={visualLogs.find((v) => v.parcel_id === selectedDetailParcel?.parcel_id)}
+        isOpen={Boolean(selectedDetailParcel)}
+        onClose={() => setSelectedDetailParcel(null)}
+      />
+
+      {/* 5. Staff Authentication Modal (Opens when logged out) */}
       <StaffAuthModal
         isOpen={isAuthModalOpen}
         onLoginSuccess={handleLoginSuccess}
       />
 
-      {/* Printable Stationary QR Poster Modal */}
+      {/* 6. Printable Stationary QR Poster Modal */}
       <PrintStationQrModal
         isOpen={isStationQrModalOpen}
         onClose={() => setIsStationQrModalOpen(false)}
@@ -350,13 +429,13 @@ export default function Home() {
         stationName={config.station_name}
       />
 
-      {/* Printable Envelope Slip Modal */}
+      {/* 7. Printable Envelope Slip Modal */}
       <EnvelopeSlipModal
         parcel={slipModalParcel}
         onClose={() => setSlipModalParcel(null)}
       />
 
-      {/* Database Connection Info Modal */}
+      {/* 8. Database Connection Info Modal */}
       <DatabaseModal
         isOpen={isDatabaseModalOpen}
         onClose={() => setIsDatabaseModalOpen(false)}
