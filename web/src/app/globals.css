@@ -1,109 +1,161 @@
 @import "tailwindcss";
 
-@layer base {
-  :root {
-    /* 60% — Canvas & Base Surfaces */
-    --surface-canvas: #F8FAFC; /* bg-slate-50: Full-screen app background */
-    --surface-card: #FFFFFF; /* bg-white: Elevated floating cards, modals */
-    --surface-subtle: #F1F5F9; /* bg-slate-100: Input field background, pill fills */
-    --surface-inverse: #0F172A; /* bg-slate-900: High-contrast hero metric card */
-    --surface-glass: rgba(255, 255, 255, 0.85); /* Floating top dock with backdrop-blur-md */
-
-    /* 30% — Structure, Layout & Content */
-    --text-primary: #0F172A; /* text-slate-900: Headings, amounts, active codes */
-    --text-secondary: #475569; /* text-slate-600: Field labels, instructions */
-    --text-muted: #94A3B8; /* text-slate-400: Timestamps, placeholders */
-    --border-subtle: #E2E8F0; /* border-slate-200: Soft card rings, dividers */
-    --border-focus: #2563EB; /* ring-blue-600 */
-
-    /* 10% — Accent, Actions & Semantic Feedback */
-    --brand-primary: #2563EB; /* bg-blue-600: Main CTA buttons */
-    --brand-hover: #1D4ED8; /* bg-blue-700 */
-    --brand-soft: #EFF6FF; /* bg-blue-50: Secondary buttons */
-    --brand-soft-text: #1D4ED8; /* text-blue-700 */
-    --status-success-bg: #DCFCE7; /* bg-emerald-100: Ready to Claim */
-    --status-success-text: #15803D; /* text-emerald-700 */
-    --status-warning-bg: #FEF3C7; /* bg-amber-100: Pending / Awaiting Funding */
-    --status-warning-text: #B45309; /* text-amber-700 */
-    --status-error: #EF4444; /* bg-rose-500: Badges & errors */
-  }
-
-  body {
-    background-color: var(--surface-canvas);
-    color: var(--text-primary);
-    font-family: -apple-system, BlinkMacSystemFont, "Plus Jakarta Sans", "Inter", "Segoe UI", Roboto, sans-serif;
-    -webkit-font-smoothing: antialiased;
-    min-height: 100vh;
-    margin: 0;
-  }
-
-  code, pre, .font-mono {
-    font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
-  }
+@theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-border-subtle: var(--border-subtle);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
+  --color-ring: var(--ring);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-subtle: var(--success-subtle);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-subtle: var(--warning-subtle);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-subtle: var(--destructive-subtle);
 }
 
-/* Design System Component Utilities */
-.surface-card {
-  background-color: #FFFFFF;
-  border: 1px solid #E2E8F0;
-  border-radius: 1.25rem; /* rounded-2xl (20px) */
-  box-shadow: 0 1px 3px 0 rgba(100, 116, 139, 0.08), 0 1px 2px -1px rgba(100, 116, 139, 0.08);
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+:root {
+  --background: #faf9f7;
+  --foreground: #0f0f12;
+  --surface: #ffffff;
+  --surface-elevated: #f2f0eb;
+  --muted: #f2f0eb;
+  --muted-foreground: #5a5a5e;
+  --border: #d4d0c8;
+  --border-subtle: #f0eee8;
+  --primary: #d9261a;
+  --primary-foreground: #ffffff;
+  --primary-hover: #ff2d20;
+  --ring: #ff2d20;
+  --success: #15803d;
+  --success-foreground: #ffffff;
+  --success-subtle: #dcfce7;
+  --warning: #b45309;
+  --warning-foreground: #ffffff;
+  --warning-subtle: #fef3c7;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --destructive-subtle: #fee2e2;
 }
 
-.surface-card:hover {
-  box-shadow: 0 4px 6px -1px rgba(100, 116, 139, 0.12), 0 2px 4px -2px rgba(100, 116, 139, 0.08);
+.dark {
+  --background: #0f0f12;
+  --foreground: #faf9f7;
+  --surface: #141418;
+  --surface-elevated: #1c1c22;
+  --muted: #18181f;
+  --muted-foreground: #a1a1aa;
+  --border: #27272e;
+  --border-subtle: #1b1b21;
+  --primary: #ff2d20;
+  --primary-foreground: #0f0f12;
+  --primary-hover: #ff4a3d;
+  --ring: #ff2d20;
+  --success: #22c55e;
+  --success-foreground: #0f0f12;
+  --success-subtle: rgba(34, 197, 94, 0.15);
+  --warning: #f59e0b;
+  --warning-foreground: #0f0f12;
+  --warning-subtle: rgba(245, 158, 11, 0.15);
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --destructive-subtle: rgba(239, 68, 68, 0.15);
 }
 
-.hero-inverse-card {
-  background-color: #0F172A;
-  border-radius: 1.75rem; /* rounded-3xl (28px) */
-  color: #FFFFFF;
-  box-shadow: 0 20px 25px -5px rgba(15, 23, 42, 0.15), 0 8px 10px -6px rgba(15, 23, 42, 0.1);
+/* Symph Engineering Grid Canvas */
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  background-image: linear-gradient(90deg, rgba(15, 15, 18, 0.035) 1px, transparent 1px),
+                    linear-gradient(rgba(15, 15, 18, 0.035) 1px, transparent 1px);
+  background-size: 200px 200px;
+  font-family: -apple-system, BlinkMacSystemFont, "Satoshi", "Plus Jakarta Sans", "Inter", "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  margin: 0;
+}
+
+.dark body, body.dark {
+  background-image: linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+                    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: 200px 200px;
+}
+
+code, pre, .font-mono {
+  font-family: "Geist Mono", "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+}
+
+/* Symph Specular Sheen & Card Lift */
+.card-lift {
+  position: relative;
+  overflow: clip;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.card-lift:after {
+  content: "";
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent 40%, rgba(255, 255, 255, 0.12) 50%, transparent 60%);
+  transition: transform 0.6s ease;
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+}
+.card-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 36px -12px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(217, 38, 26, 0.2);
+}
+.card-lift:hover:after {
+  transform: translateX(100%);
+}
+
+/* Glassmorphism */
+.glass-card {
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
 }
 
 .glass-dock {
-  background: rgba(255, 255, 255, 0.88);
+  background: rgba(250, 249, 247, 0.85);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border-bottom: 1px solid rgba(226, 232, 240, 0.9);
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04);
+  border-bottom: 1px solid var(--border-subtle);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.03);
 }
 
-.glow-ping-light {
-  animation: pulse-glow-light 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+.dark .glass-dock {
+  background: rgba(15, 15, 18, 0.85);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
-@keyframes pulse-glow-light {
-  0%, 100% {
-    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
-  }
-  50% {
-    box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
-  }
+/* Ambient glows */
+.glow-primary {
+  box-shadow: 0 8px 24px -4px rgba(217, 38, 26, 0.35), 0 0 40px rgba(217, 38, 26, 0.15);
 }
 
-.scanline-light {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, #2563EB, transparent);
-  box-shadow: 0 0 10px #2563EB;
-  animation: scan 2.5s ease-in-out infinite;
+.glow-primary-hover:hover {
+  box-shadow: 0 8px 24px -4px rgba(217, 38, 26, 0.45), 0 0 40px rgba(217, 38, 26, 0.2);
 }
 
-@keyframes scan {
-  0% { top: 5%; opacity: 0; }
-  15% { opacity: 1; }
-  85% { opacity: 1; }
-  100% { top: 95%; opacity: 0; }
+@keyframes scrollPulse {
+  0% { transform: translateY(-100%); opacity: 0; }
+  50% { opacity: 1; }
+  100% { transform: translateY(100%); opacity: 0; }
 }
 
 @media print {
   body {
     background: #ffffff !important;
+    background-image: none !important;
     color: #000000 !important;
   }
   .no-print {

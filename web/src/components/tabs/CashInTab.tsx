@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { ParcelRow } from '@/types/database';
-import { Banknote, ShieldCheck, AlertTriangle, CheckCircle, Lock, Sparkles, UserCheck } from 'lucide-react';
+import { Banknote, ShieldCheck, AlertTriangle, CheckCircle, Lock } from 'lucide-react';
 import { StaffSession } from '../StaffAuthModal';
 
 interface CashInTabProps {
@@ -66,29 +66,29 @@ export const CashInTab: React.FC<CashInTabProps> = ({
   return (
     <div className="space-y-6">
       {/* Header Banner */}
-      <div className="surface-card p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="card-lift glass-card p-6 rounded-2xl bg-surface border border-border flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-base font-bold text-[#0F172A] flex items-center gap-2">
+          <h2 className="text-base font-extrabold tracking-tight text-foreground flex items-center gap-2">
             <span>Physical Cash-In & Desk Funding Gate</span>
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
+            <span className="px-3 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-widest bg-warning-subtle text-warning border border-warning/30">
               State: STAGED → FUNDED
             </span>
           </h2>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs text-muted-foreground mt-1">
             Accept physical cash from student, seal exact courier COD in an isolated envelope, and advance status to FUNDED.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-2 bg-slate-100 px-3.5 py-1.5 rounded-full border border-slate-200 text-xs font-semibold">
-            <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
-            <span className="text-slate-600">Invariant 3:</span>
-            <span className="text-amber-800 font-extrabold uppercase text-[10px]">Client Ping Required</span>
+          <div className="flex items-center gap-2 bg-muted px-4 py-1.5 rounded-full border border-border text-xs font-semibold">
+            <ShieldCheck className="w-3.5 h-3.5 text-warning" />
+            <span className="text-muted-foreground">Invariant 3:</span>
+            <span className="text-warning font-extrabold uppercase text-[10px]">Client Ping Required</span>
           </div>
 
-          <div className="flex items-center gap-2 bg-slate-100 px-3.5 py-1.5 rounded-full border border-slate-200 text-xs font-semibold">
-            <span className="text-slate-600">Operator:</span>
-            <span className="text-blue-700 font-mono font-bold text-[11px]">{staffSession?.staffId || 'STAFF-0488'}</span>
+          <div className="flex items-center gap-2 bg-muted px-4 py-1.5 rounded-full border border-border text-xs font-semibold">
+            <span className="text-muted-foreground">Operator:</span>
+            <span className="text-foreground font-mono font-bold text-[11px]">{staffSession?.staffId || 'STAFF-0488'}</span>
           </div>
         </div>
       </div>
@@ -96,22 +96,22 @@ export const CashInTab: React.FC<CashInTabProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left: Staged Parcels List (5 cols) */}
         <div className="lg:col-span-5 space-y-3">
-          <div className="surface-card p-5">
-            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
+          <div className="card-lift glass-card p-6 rounded-2xl bg-surface border border-border">
+            <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">
               1. Select Staged Consignment
             </h3>
 
             {stagedParcels.length === 0 ? (
-              <div className="p-8 text-center bg-slate-50 rounded-2xl border border-slate-200">
-                <p className="text-xs font-semibold text-slate-600">
+              <div className="p-8 text-center bg-muted/40 rounded-2xl border border-border">
+                <p className="text-xs font-semibold text-foreground">
                   No staged consignments awaiting funding right now.
                 </p>
-                <p className="text-[11px] text-slate-400 mt-1">
+                <p className="text-[11px] text-muted-foreground mt-1">
                   When students pre-register parcels via the mobile client, they appear here.
                 </p>
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 {stagedParcels.map((p) => {
                   const isSelected = p.parcel_id === selectedParcelId;
                   const isPinged = Boolean(p.payment_pinged_at);
@@ -119,6 +119,7 @@ export const CashInTab: React.FC<CashInTabProps> = ({
                   return (
                     <button
                       key={p.parcel_id}
+                      type="button"
                       onClick={() => {
                         if (isPinged) {
                           setSelectedParcelId(p.parcel_id);
@@ -126,43 +127,44 @@ export const CashInTab: React.FC<CashInTabProps> = ({
                         }
                       }}
                       disabled={!isPinged}
-                      className={`w-full text-left p-4 rounded-2xl border transition-all ${
+                      aria-label={`Select staged consignment ${p.waybill_number}`}
+                      className={`w-full text-left p-4 rounded-2xl border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                         !isPinged
-                          ? 'opacity-60 bg-slate-50 border-slate-200 cursor-not-allowed'
+                          ? 'opacity-60 bg-muted/30 border-border cursor-not-allowed'
                           : isSelected
-                          ? 'border-blue-600 bg-blue-50/40 ring-2 ring-blue-500/20 shadow-sm'
-                          : 'border-slate-200 hover:border-blue-300 bg-white'
+                          ? 'border-primary bg-primary/5 ring-1 ring-primary/20 shadow-sm'
+                          : 'border-border hover:border-primary/40 bg-surface'
                       }`}
                     >
                       <div className="flex items-center justify-between mb-1.5">
-                        <span className="font-mono text-xs font-bold text-[#0F172A]">
+                        <span className="font-mono text-xs font-bold text-foreground">
                           {p.waybill_number}
                         </span>
                         <div className="flex items-center gap-1.5">
                           {isPinged ? (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 flex items-center gap-1 animate-pulse">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
-                              PING RECEIVED
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-success-subtle text-success border border-success/30 flex items-center gap-1 animate-pulse">
+                              <span className="w-1.5 h-1.5 rounded-full bg-success" />
+                              PING ACTIVE
                             </span>
                           ) : (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-200 text-slate-600 flex items-center gap-1">
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-muted text-muted-foreground border border-border flex items-center gap-1">
                               <Lock className="w-2.5 h-2.5" />
-                              LOCKED (AWAITING SCAN)
+                              LOCKED (SCAN REQ)
                             </span>
                           )}
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between text-xs text-slate-500">
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
                         <span>{p.recipient_name || 'Student Consignment'}</span>
-                        <span className="font-semibold text-slate-800">
+                        <span className="font-semibold text-foreground">
                           {p.cod_amount === 0 ? 'Prepaid (₱0)' : `COD: ₱${p.cod_amount.toFixed(2)}`}
                         </span>
                       </div>
 
                       {!isPinged && (
-                        <p className="text-[10px] text-amber-700 bg-amber-50 px-2 py-1 rounded-lg mt-2 font-medium">
-                          ⚠ Invariant: Student must scan Station QR or enter Hub ID on mobile before staff can interact.
+                        <p className="text-[10px] text-warning bg-warning-subtle/50 px-2.5 py-1 rounded-xl mt-2 font-medium border border-warning/20">
+                          ⚠ Invariant: Student must scan Station QR or enter Hub ID on mobile before staff can accept payment.
                         </p>
                       )}
                     </button>
@@ -175,57 +177,59 @@ export const CashInTab: React.FC<CashInTabProps> = ({
 
         {/* Right: Cash Input & Escrow Allocation (7 cols) */}
         <div className="lg:col-span-7">
-          <div className="surface-card p-6">
-            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">
+          <div className="card-lift glass-card p-6 rounded-2xl bg-surface border border-border">
+            <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">
               2. Accept Cash Deposit & Seal Envelope
             </h3>
 
             {!selectedParcel ? (
-              <div className="p-12 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-                <Banknote className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                <p className="text-xs font-semibold text-slate-600">
+              <div className="p-12 text-center bg-muted/40 rounded-2xl border border-dashed border-border">
+                <Banknote className="w-8 h-8 text-muted-foreground mx-auto mb-2 opacity-50" />
+                <p className="text-xs font-semibold text-foreground">
                   Select a pinged consignment from the left to accept cash.
                 </p>
-                <p className="text-[11px] text-slate-400 mt-1">
+                <p className="text-[11px] text-muted-foreground mt-1">
                   Only consignments where the student has scanned the Station QR or pinged the desk are unlocked.
                 </p>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-5">
                 {/* Consignment Target Overview */}
-                <div className="p-4 rounded-2xl bg-blue-50/50 border border-blue-100 flex items-center justify-between">
+                <div className="p-4 rounded-2xl bg-surface-elevated border border-border flex items-center justify-between">
                   <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-primary">
                       Selected Consignment
                     </span>
-                    <p className="font-mono font-bold text-sm text-[#0F172A] mt-0.5">
+                    <p className="font-mono font-bold text-sm text-foreground mt-0.5">
                       {selectedParcel.waybill_number}
                     </p>
-                    <p className="text-xs text-slate-600 mt-0.5">
+                    <p className="text-xs text-muted-foreground mt-0.5">
                       Recipient: <strong>{selectedParcel.recipient_name || 'Student Recipient'}</strong> ({selectedParcel.carrier})
                     </p>
                   </div>
 
                   <div className="text-right">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                       Required COD
                     </span>
-                    <p className="text-lg font-bold font-mono text-slate-900 mt-0.5">
+                    <p className="text-lg font-bold font-mono text-foreground mt-0.5">
                       ₱{selectedParcel.cod_amount.toFixed(2)}
                     </p>
                   </div>
                 </div>
 
                 {/* Cash Input */}
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                <div className="space-y-1.5">
+                  <label htmlFor="cash-deposit-amount" className="block text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
                     Physical Cash Handed by Student (PHP)
                   </label>
                   <div className="relative">
-                    <span className="absolute left-4 top-3 text-sm font-bold text-slate-400 font-mono">
+                    <span className="absolute left-4 top-3 text-sm font-bold text-muted-foreground font-mono">
                       ₱
                     </span>
                     <input
+                      id="cash-deposit-amount"
+                      aria-label="Physical Cash Handed by Student in PHP"
                       type="number"
                       step="1"
                       min={selectedParcel.cod_amount}
@@ -233,11 +237,11 @@ export const CashInTab: React.FC<CashInTabProps> = ({
                       onChange={(e) => setDepositAmount(e.target.value)}
                       placeholder={selectedParcel.cod_amount.toString()}
                       disabled={isPrepaid}
-                      className="w-full pl-9 pr-4 py-3 rounded-2xl border border-slate-200 text-base font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full pl-9 pr-4 py-3 rounded-2xl bg-surface-elevated border border-border text-base font-mono font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary transition-all"
                     />
                   </div>
                   {isPrepaid && (
-                    <p className="text-[11px] text-emerald-700 mt-1 font-medium">
+                    <p className="text-[11px] text-success mt-1 font-medium">
                       This order is prepaid by sender. No cash deposit required.
                     </p>
                   )}
@@ -253,7 +257,8 @@ export const CashInTab: React.FC<CashInTabProps> = ({
                           key={amt}
                           type="button"
                           onClick={() => setDepositAmount(amt.toString())}
-                          className="px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 active:scale-95 transition-all"
+                          aria-label={`Select exact amount of ${amt} pesos`}
+                          className="px-4 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider bg-muted hover:bg-surface-elevated text-foreground border border-border active:scale-95 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         >
                           Exact ₱{amt}
                         </button>
@@ -263,22 +268,22 @@ export const CashInTab: React.FC<CashInTabProps> = ({
                 )}
 
                 {/* Change Calculation Breakdown */}
-                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
-                  <div className="flex justify-between text-slate-600">
+                <div className="p-4 rounded-2xl bg-surface-elevated border border-border space-y-2 text-xs">
+                  <div className="flex justify-between text-muted-foreground">
                     <span>Courier COD Budget (to be sealed in envelope):</span>
-                    <span className="font-mono font-bold text-slate-900">
+                    <span className="font-mono font-bold text-foreground">
                       ₱{selectedParcel.cod_amount.toFixed(2)}
                     </span>
                   </div>
-                  <div className="flex justify-between text-slate-600">
+                  <div className="flex justify-between text-muted-foreground">
                     <span>Cash Handed:</span>
-                    <span className="font-mono font-bold text-slate-900">
+                    <span className="font-mono font-bold text-foreground">
                       ₱{numDeposit.toFixed(2)}
                     </span>
                   </div>
-                  <div className="flex justify-between items-baseline pt-2 border-t border-slate-200 font-bold">
-                    <span className="text-slate-900">Change to return to student at claim:</span>
-                    <span className={`text-base font-mono ${changeDue >= 0 ? 'text-emerald-700' : 'text-rose-600'}`}>
+                  <div className="flex justify-between items-baseline pt-2 border-t border-border font-bold">
+                    <span className="text-foreground">Change to return to student at claim:</span>
+                    <span className={`text-base font-mono ${changeDue >= 0 ? 'text-success' : 'text-destructive'}`}>
                       ₱{Math.max(0, changeDue).toFixed(2)}
                     </span>
                   </div>
@@ -286,8 +291,8 @@ export const CashInTab: React.FC<CashInTabProps> = ({
 
                 {/* Solvency Warning if student gave less than COD */}
                 {!isValidSolvent && !isPrepaid && (
-                  <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
-                    <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
+                  <div className="p-4 rounded-2xl bg-destructive-subtle border border-destructive/30 text-destructive text-xs flex items-center gap-2.5">
+                    <AlertTriangle className="w-4 h-4 shrink-0 text-destructive" />
                     <span>
                       <strong>Solvency Invariant Violation:</strong> Physical cash must be greater than or equal to COD (₱{selectedParcel.cod_amount.toFixed(2)}). Hub never fronts money.
                     </span>
@@ -298,10 +303,12 @@ export const CashInTab: React.FC<CashInTabProps> = ({
                 <button
                   type="submit"
                   disabled={!isValidSolvent || submitting}
-                  className="w-full h-12 rounded-full text-xs font-bold bg-amber-600 hover:bg-amber-700 active:scale-[0.98] disabled:opacity-40 text-white flex items-center justify-center gap-2 shadow-lg shadow-amber-600/25 transition-all"
+                  aria-label="Commit payment accept and seal envelope"
+                  className="relative inline-flex items-center justify-center gap-2 w-full py-3.5 px-6 rounded-full text-xs font-semibold uppercase tracking-widest text-primary-foreground bg-primary hover:bg-primary-hover active:scale-[0.98] disabled:opacity-40 shadow-[0_4px_16px_rgba(217,38,26,0.35)] transition-all overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group"
                 >
-                  <CheckCircle className="w-4 h-4" />
-                  <span>
+                  <span className="absolute inset-0 pointer-events-none -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-out bg-gradient-to-r from-transparent via-white/25 to-transparent" />
+                  <CheckCircle className="relative z-10 w-4 h-4" />
+                  <span className="relative z-10">
                     {submitting
                       ? 'Sealing Envelope & Ledgering...'
                       : `Commit Payment Accept (₱${numDeposit.toFixed(2)}) & Print Label`}

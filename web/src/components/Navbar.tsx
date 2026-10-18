@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { QrCode, Cpu, Sparkles, Database, Clock, ShieldCheck, LogOut, FileText } from 'lucide-react';
+import { QrCode, Cpu, Sparkles, Database, LogOut, FileText } from 'lucide-react';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { StaffSession } from './StaffAuthModal';
 
@@ -54,42 +54,50 @@ export const Navbar: React.FC<NavbarProps> = ({
   }, []);
 
   return (
-    <header className="glass-dock sticky top-0 z-40 w-full px-6 py-3.5 flex items-center justify-between">
+    <header className="glass-dock sticky top-0 z-40 w-full px-4 sm:px-6 py-3 flex items-center justify-between transition-colors">
       {/* Brand & Terminal Station */}
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-600/25">
-            <span className="text-white font-black text-xl tracking-wider">P</span>
+          <div className="w-9 h-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-black text-sm shadow-[0_4px_16px_rgba(217,38,26,0.35)]">
+            <span>P</span>
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-base font-extrabold text-[#0F172A] tracking-tight">ParcelHub</h1>
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200">
-                Staff Counter Terminal
+              <span className="text-sm font-extrabold text-foreground tracking-tight uppercase">
+                ParcelHub
+              </span>
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-widest bg-primary/10 text-primary border border-primary/20">
+                Staff Terminal
               </span>
             </div>
-            <p className="text-xs text-slate-500 font-medium">CTU-DANAO-MAIN-HUB · Campus Gate 1</p>
+            <p className="text-[11px] text-muted-foreground font-medium">
+              CTU-DANAO-MAIN-HUB · Campus Gate 1
+            </p>
           </div>
         </div>
       </div>
 
       {/* Center: Live Escrow Sync & AI Gate Status */}
-      <div className="hidden lg:flex items-center gap-3">
+      <div className="hidden lg:flex items-center gap-2.5">
         {/* Clock & Realtime indicator */}
-        <div className="flex items-center gap-2.5 bg-slate-100 px-3.5 py-1.5 rounded-full border border-slate-200">
-          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="text-xs font-semibold text-slate-700">Live Counter Node</span>
-          <span className="text-slate-300">|</span>
-          <span className="text-xs font-mono font-medium text-slate-500">{time || '18:00:00 PHT'}</span>
+        <div className="flex items-center gap-2 bg-muted px-3.5 py-1.5 rounded-full border border-border">
+          <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
+          <span className="text-xs font-semibold text-foreground">Live Counter</span>
+          <span className="text-muted-foreground/40">|</span>
+          <span className="text-xs font-mono font-medium text-muted-foreground">
+            {time || '18:00:00 PHT'}
+          </span>
         </div>
 
         {/* Database Live Status Button */}
         <button
+          type="button"
           onClick={onOpenDatabaseModal}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+          aria-label="View Supabase database connection and schema"
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
             isLive
-              ? 'bg-emerald-50 border-emerald-200 text-emerald-800 hover:bg-emerald-100'
-              : 'bg-amber-50 border-amber-200 text-amber-800 hover:bg-amber-100'
+              ? 'bg-success-subtle border-success/30 text-success'
+              : 'bg-warning-subtle border-warning/30 text-warning'
           }`}
           title="Click to check Supabase database connection and view schema"
         >
@@ -99,41 +107,47 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* AI Setting 1: Student Receipt OCR Toggle */}
         <button
+          type="button"
           onClick={onToggleUserReceiptAi}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+          aria-label="Toggle student receipt AI OCR feature"
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
             userReceiptAi
-              ? 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100'
-              : 'bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200'
+              ? 'bg-primary/10 border-primary/30 text-primary'
+              : 'bg-muted border-border text-muted-foreground'
           }`}
           title="Toggle Student Receipt AI OCR: If disabled, mobile user skips receipt OCR and enters manually."
         >
-          <FileText className="w-3.5 h-3.5 text-blue-600" />
+          <FileText className="w-3.5 h-3.5" />
           <span>User AI OCR:</span>
           <span className="font-extrabold">{userReceiptAi ? 'ON' : 'OFF'}</span>
         </button>
 
         {/* AI Setting 2: Staff Intake Precheck Toggle */}
         <button
+          type="button"
           onClick={onToggleStaffIntakeAi}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+          aria-label="Toggle staff intake AI precheck feature"
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
             staffIntakeAi
-              ? 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100'
-              : 'bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200'
+              ? 'bg-primary/10 border-primary/30 text-primary'
+              : 'bg-muted border-border text-muted-foreground'
           }`}
           title="Toggle Staff Intake AI Precheck: If disabled, counter staff bypasses AI camera scan."
         >
-          <Cpu className="w-3.5 h-3.5 text-blue-600" />
+          <Cpu className="w-3.5 h-3.5" />
           <span>Staff AI Intake:</span>
           <span className="font-extrabold">{staffIntakeAi ? 'ON' : 'OFF'}</span>
         </button>
       </div>
 
       {/* Right: Authenticated Operator Badge & Fast Actions */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2.5">
         {/* Simulate Payment Ping (for testing counter cash-in gate) */}
         <button
+          type="button"
           onClick={onSimulatePaymentPing}
-          className="hidden xl:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 active:scale-[0.98] transition-all"
+          aria-label="Simulate student scanning station QR to pay cash"
+          className="hidden xl:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider bg-warning-subtle text-warning border border-warning/30 hover:bg-warning/20 active:scale-[0.98] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           title="Simulate student scanning station QR to pay cash"
         >
           <span>⚡ Ping Cash Desk</span>
@@ -141,37 +155,48 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Realtime Claim Ping Indicator */}
         <button
+          type="button"
           onClick={onSimulateClaimPing}
-          className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+          aria-label="Simulate student dispatching claim ping from mobile client"
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
             activePingCount > 0
-              ? 'bg-emerald-50 border-emerald-300 text-emerald-800 animate-pulse'
-              : 'bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200'
+              ? 'bg-success-subtle border-success/40 text-success animate-pulse'
+              : 'bg-muted border-border text-muted-foreground hover:text-foreground'
           }`}
           title="Simulate student dispatching claim ping from mobile client"
         >
-          <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+          <Sparkles className="w-3.5 h-3.5 text-primary" />
           <span>{activePingCount > 0 ? `${activePingCount} Student Claim Active` : 'Simulate Claim'}</span>
         </button>
 
         {/* Printable Hub QR Trigger */}
         <button
+          type="button"
           onClick={onOpenStationQrModal}
-          className="flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white shadow-lg shadow-blue-600/20 transition-all"
+          aria-label="Open printable Station QR poster"
+          className="relative inline-flex items-center justify-center gap-2 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-primary-foreground bg-primary rounded-full overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(217,38,26,0.35)] active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group"
         >
-          <QrCode className="w-4 h-4" />
-          <span className="hidden sm:inline">Station QR</span>
+          <span className="absolute inset-0 pointer-events-none -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-out bg-gradient-to-r from-transparent via-white/25 to-transparent" />
+          <QrCode className="relative z-10 w-4 h-4" />
+          <span className="relative z-10 hidden sm:inline">Station QR</span>
         </button>
 
         {/* Staff Session Status */}
         {staffSession && (
-          <div className="flex items-center gap-2 pl-2 border-l border-slate-200">
+          <div className="flex items-center gap-2.5 pl-2.5 border-l border-border">
             <div className="hidden sm:block text-right">
-              <p className="text-xs font-bold text-slate-900 leading-none">{staffSession.staffId}</p>
-              <p className="text-[10px] text-slate-500 leading-tight mt-0.5">{staffSession.fullName}</p>
+              <p className="text-xs font-bold font-mono text-foreground leading-none">
+                {staffSession.staffId}
+              </p>
+              <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">
+                {staffSession.fullName}
+              </p>
             </div>
             <button
+              type="button"
               onClick={onLogoutStaff}
-              className="p-2 rounded-full text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+              aria-label="Log out staff session"
+              className="p-2 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive-subtle transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               title="Log out staff session"
             >
               <LogOut className="w-4 h-4" />

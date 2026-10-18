@@ -9,41 +9,41 @@
  */
 
 export const Colors = {
-  // 60% — Canvas & Base Surfaces
+  // 60% — Canvas & Base Surfaces (Symph Studio Craft)
   surface: {
-    canvas: '#F8FAFC', // Base app background (off-white, avoids hospital-white)
-    card: '#FFFFFF', // Elevated floating cards, sheets
-    subtle: '#F1F5F9', // Input field bg, keypad pill fills (slate-100)
-    inverse: '#0F172A', // High-contrast hero metric card (slate-900)
-    glass: 'rgba(255, 255, 255, 0.85)', // Floating bottom nav dock with blur
-    glassInverse: 'rgba(15, 23, 42, 0.85)',
-    border: '#E2E8F0', // Aliased for card perimeter borders
+    canvas: '#faf9f7', // Base app background (warm chalk)
+    card: '#ffffff', // Elevated floating cards, sheets
+    subtle: '#f2f0eb', // Input field bg, keypad pill fills (cream)
+    inverse: '#0f0f12', // High-contrast hero metric card (deep ink)
+    glass: 'rgba(250, 249, 247, 0.85)', // Floating bottom nav dock with blur
+    glassInverse: 'rgba(15, 15, 18, 0.85)',
+    border: '#d4d0c8', // Aliased for card perimeter borders
   },
 
   // 30% — Structure, Layout & Content
   structure: {
-    textPrimary: '#0F172A', // Deep slate for headings, amounts (NEVER pure #000000)
-    textSecondary: '#475569', // Field labels, instructions (slate-600)
-    textMuted: '#94A3B8', // Timestamps, placeholders, inactive icons (slate-400)
-    borderSubtle: '#E2E8F0', // Dividers, soft card perimeter rings (slate-200)
-    borderFocus: '#2563EB', // Input focus ring (blue-600)
+    textPrimary: '#0f0f12', // Deep ink for headings, amounts
+    textSecondary: '#5a5a5e', // Field labels, instructions
+    textMuted: '#a1a1aa', // Timestamps, placeholders, inactive icons
+    borderSubtle: '#d4d0c8', // Dividers, soft card perimeter rings
+    borderFocus: '#ff2d20', // Input focus ring (Laravel flame)
   },
 
   // 10% — Accent, Actions & Semantic Feedback
   accent: {
-    brandPrimary: '#2563EB', // Main CTA buttons, active indicators (blue-600)
-    brandHover: '#1D4ED8', // Active tap state (blue-700)
-    brandSoft: '#EFF6FF', // Secondary buttons, icon backdrops (blue-50)
-    brandSoftText: '#1D4ED8', // Labels on brand-soft surfaces
-    subtleBlue: '#EFF6FF', // Convenience alias for brandSoft
+    brandPrimary: '#d9261a', // Main CTA buttons, active indicators (Laravel flame)
+    brandHover: '#ff2d20', // Active tap state
+    brandSoft: 'rgba(217, 38, 26, 0.08)', // Secondary buttons, icon backdrops
+    brandSoftText: '#d9261a', // Labels on brand-soft surfaces
+    subtleBlue: 'rgba(217, 38, 26, 0.08)', // Compatibility alias
     
     // Semantic States
-    successBg: '#DCFCE7', // Ready to Claim / Claimed badge background (emerald-100)
-    successText: '#15803D', // Ready to Claim text (emerald-700)
-    subtleGreen: '#DCFCE7', // Convenience alias for successBg
-    warningBg: '#FEF3C7', // Pending / Awaiting Funding badge (amber-100)
-    warningText: '#B45309', // Warning text (amber-700)
-    error: '#EF4444', // Notification count badge, errors (rose-500)
+    successBg: '#dcfce7', // Ready to Claim / Claimed badge background
+    successText: '#15803d', // Ready to Claim text
+    subtleGreen: '#dcfce7', // Convenience alias for successBg
+    warningBg: '#fef3c7', // Pending / Awaiting Funding badge
+    warningText: '#b45309', // Warning text
+    error: '#ef4444', // Notification count badge, errors
   },
 } as const;
 

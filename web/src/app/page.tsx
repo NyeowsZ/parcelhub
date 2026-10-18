@@ -91,7 +91,7 @@ export default function Home() {
     loadData();
     const unsubscribe = DataService.subscribeToChanges(() => {
       loadData();
-      showToast('⚡ Live Realtime Update received from Supabase!');
+      showToast('Live Realtime Update received from Supabase!');
     });
     return () => unsubscribe();
   }, [loadData]);
@@ -164,7 +164,7 @@ export default function Home() {
     if (unpinged) {
       await DataService.commitPaymentPing(unpinged.parcel_id);
       await loadData();
-      showToast(`⚡ Payment Ping: Student scanned station QR for ${unpinged.waybill_number}! Unlocked in Cash-In tab.`);
+      showToast(`Payment Ping: Student scanned station QR for ${unpinged.waybill_number}! Unlocked in Cash-In tab.`);
       setActiveTab('CASH_IN');
     } else {
       showToast('All staged parcels already have payment pings active.');
@@ -182,7 +182,7 @@ export default function Home() {
       await DataService.dispatchClaimPing(candidate.parcel_id);
       await loadData();
       showToast(
-        `🚨 Claim Ping: ${candidate.recipient_name} entered MPIN & pinged CTU Danao desk! Surfaced at top of queue.`
+        `Claim Ping: ${candidate.recipient_name} entered MPIN & pinged desk! Surfaced at top of queue.`
       );
       setActiveTab('QUEUE');
     } else {
@@ -196,7 +196,7 @@ export default function Home() {
   ).length;
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#F8FAFC] text-[#0F172A] selection:bg-blue-600 selection:text-white">
+    <div className="min-h-screen flex flex-col bg-background text-foreground selection:bg-primary selection:text-primary-foreground">
       {/* Top Navbar */}
       <Navbar
         userReceiptAi={config.ai_user_receipt_ocr}
@@ -216,14 +216,17 @@ export default function Home() {
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
         {/* Toast Alert Notification */}
         {toastMessage && (
-          <div className="mb-6 p-4 rounded-2xl bg-blue-600 text-white font-medium text-xs flex items-center justify-between shadow-xl shadow-blue-600/20 border border-blue-500 animate-in fade-in slide-in-from-top-2">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-white" />
+          <div className="card-lift glass-card mb-6 p-4 rounded-2xl bg-surface/95 text-foreground font-medium text-xs flex items-center justify-between border border-primary/30 shadow-lg animate-in fade-in slide-in-from-top-2">
+            <div className="flex items-center gap-2.5">
+              <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+              <CheckCircle2 className="w-4 h-4 text-primary" />
               <span>{toastMessage}</span>
             </div>
             <button
+              type="button"
               onClick={() => setToastMessage(null)}
-              className="text-white/80 hover:text-white font-bold text-xs"
+              aria-label="Dismiss notification"
+              className="p-1 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               ✕
             </button>
@@ -236,31 +239,35 @@ export default function Home() {
           onNavigateToQueue={() => setActiveTab('QUEUE')}
         />
 
-        {/* Primary Operational Tabs (Rounded Pill Switcher) */}
-        <div className="flex items-center gap-2 border-b border-slate-200 pb-4 mb-6 overflow-x-auto">
+        {/* Primary Operational Tabs (Symph Pill Switcher) */}
+        <nav aria-label="Terminal Workflow Modes" className="flex items-center gap-2 border-b border-border pb-4 mb-6 overflow-x-auto">
           <button
+            type="button"
             onClick={() => setActiveTab('QUEUE')}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold transition-all ${
+            aria-label="Switch to Claim Handshake Queue tab"
+            className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-xs font-semibold uppercase tracking-wider transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
               activeTab === 'QUEUE'
-                ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
-                : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
+                ? 'bg-primary text-primary-foreground shadow-[0_4px_16px_rgba(217,38,26,0.35)]'
+                : 'bg-surface text-muted-foreground hover:text-foreground hover:bg-surface-elevated border border-border'
             }`}
           >
             <UserCheck className="w-4 h-4" />
             <span>1. Claim Handshake Queue</span>
             {activePingCount > 0 && (
-              <span className="w-5 h-5 rounded-full bg-emerald-500 text-white font-black text-[10px] flex items-center justify-center animate-pulse">
+              <span className="w-5 h-5 rounded-full bg-success text-success-foreground font-black text-[10px] flex items-center justify-center animate-pulse">
                 {activePingCount}
               </span>
             )}
           </button>
 
           <button
+            type="button"
             onClick={() => setActiveTab('INTAKE')}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold transition-all ${
+            aria-label="Switch to Courier Arrival & AI Ingestion tab"
+            className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-xs font-semibold uppercase tracking-wider transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
               activeTab === 'INTAKE'
-                ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
-                : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
+                ? 'bg-primary text-primary-foreground shadow-[0_4px_16px_rgba(217,38,26,0.35)]'
+                : 'bg-surface text-muted-foreground hover:text-foreground hover:bg-surface-elevated border border-border'
             }`}
           >
             <Camera className="w-4 h-4" />
@@ -268,11 +275,13 @@ export default function Home() {
           </button>
 
           <button
+            type="button"
             onClick={() => setActiveTab('CASH_IN')}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold transition-all ${
+            aria-label="Switch to Cash-In & Envelopes tab"
+            className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-xs font-semibold uppercase tracking-wider transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
               activeTab === 'CASH_IN'
-                ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
-                : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
+                ? 'bg-primary text-primary-foreground shadow-[0_4px_16px_rgba(217,38,26,0.35)]'
+                : 'bg-surface text-muted-foreground hover:text-foreground hover:bg-surface-elevated border border-border'
             }`}
           >
             <Banknote className="w-4 h-4" />
@@ -280,17 +289,19 @@ export default function Home() {
           </button>
 
           <button
+            type="button"
             onClick={() => setActiveTab('LEDGER')}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold transition-all ${
+            aria-label="Switch to Envelope Vault Ledger tab"
+            className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-xs font-semibold uppercase tracking-wider transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
               activeTab === 'LEDGER'
-                ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
-                : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
+                ? 'bg-primary text-primary-foreground shadow-[0_4px_16px_rgba(217,38,26,0.35)]'
+                : 'bg-surface text-muted-foreground hover:text-foreground hover:bg-surface-elevated border border-border'
             }`}
           >
             <History className="w-4 h-4" />
             <span>4. Envelope Vault Ledger</span>
           </button>
-        </div>
+        </nav>
 
         {/* Active Tab Screen */}
         {activeTab === 'QUEUE' && (

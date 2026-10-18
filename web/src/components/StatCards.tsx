@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 import { Package, Banknote, UserCheck, ShieldCheck, ArrowRight } from 'lucide-react';
 import { ParcelRow } from '../types/database';
@@ -24,37 +26,37 @@ export const StatCards: React.FC<StatCardsProps> = ({ parcels, onNavigateToQueue
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
-      {/* 1. Hero Metric Card: Deep Slate High-Contrast Card per DESIGN_CONTEXT.md Section 5.3 */}
-      <div className="hero-inverse-card p-6 flex flex-col justify-between">
+      {/* 1. Hero KPI Metric Card: Station Claim Queue */}
+      <div className="card-lift glass-card p-6 rounded-2xl bg-surface border border-border flex flex-col justify-between">
         <div>
           <div className="flex items-center justify-between mb-4">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+            <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
               Station Claim Queue
             </span>
             <div
-              className={`w-9 h-9 rounded-2xl flex items-center justify-center ${
+              className={`w-9 h-9 rounded-full flex items-center justify-center ${
                 activePings > 0
-                  ? 'bg-emerald-500/20 text-emerald-400'
-                  : 'bg-slate-800 text-slate-300'
+                  ? 'bg-success-subtle text-success'
+                  : 'bg-muted text-muted-foreground'
               }`}
             >
-              <UserCheck className="w-5 h-5" />
+              <UserCheck className="w-4 h-4" />
             </div>
           </div>
 
           <div className="flex items-baseline gap-2.5">
-            <span className="text-4xl font-extrabold text-white tracking-tight">
+            <span className="text-4xl font-black font-mono tracking-tight text-foreground">
               {activePings}
             </span>
-            <span className="text-sm font-medium text-slate-300">
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Students at Desk
             </span>
           </div>
 
-          <p className="text-xs text-slate-400 mt-2">
+          <p className="text-xs text-muted-foreground mt-2">
             {activePings > 0 ? (
-              <span className="text-emerald-400 font-semibold flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-success font-semibold flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
                 Active MPIN Handshake Pending
               </span>
             ) : (
@@ -65,8 +67,10 @@ export const StatCards: React.FC<StatCardsProps> = ({ parcels, onNavigateToQueue
 
         {activePings > 0 && (
           <button
+            type="button"
             onClick={onNavigateToQueue}
-            className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs font-bold text-blue-400 hover:text-blue-300 transition-colors"
+            aria-label="Fulfill pickup handshake in queue tab"
+            className="mt-4 pt-3 border-t border-border flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-primary hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md transition-colors"
           >
             <span>Fulfill Pickup Handshake</span>
             <ArrowRight className="w-4 h-4" />
@@ -74,85 +78,85 @@ export const StatCards: React.FC<StatCardsProps> = ({ parcels, onNavigateToQueue
         )}
       </div>
 
-      {/* 2. In Hub Custody: Crisp White Card (Level 1 Elevation) */}
-      <div className="surface-card p-5 flex flex-col justify-between">
+      {/* 2. In Hub Custody Card */}
+      <div className="card-lift glass-card p-6 rounded-2xl bg-surface border border-border flex flex-col justify-between">
         <div>
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
               In Hub Custody
             </span>
-            <div className="w-9 h-9 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
-              <Package className="w-5 h-5" />
+            <div className="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+              <Package className="w-4 h-4" />
             </div>
           </div>
 
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-extrabold text-[#0F172A] tracking-tight">
+            <span className="text-4xl font-black font-mono tracking-tight text-foreground">
               {readyInCustody}
             </span>
-            <span className="text-xs font-semibold text-slate-500">
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Verified Packages
             </span>
           </div>
         </div>
 
-        <div className="pt-3 border-t border-slate-100 mt-3 text-xs text-slate-600 flex justify-between items-center">
+        <div className="pt-3 border-t border-border mt-3 text-xs text-muted-foreground flex justify-between items-center">
           <span>Enclosed change:</span>
-          <span className="font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+          <span className="font-mono font-bold text-success bg-success-subtle px-2.5 py-0.5 rounded-full border border-success/20">
             ₱{totalChangeHeld.toFixed(2)}
           </span>
         </div>
       </div>
 
-      {/* 3. Funded Envelopes: Crisp White Card */}
-      <div className="surface-card p-5 flex flex-col justify-between">
+      {/* 3. Funded Envelopes Card */}
+      <div className="card-lift glass-card p-6 rounded-2xl bg-surface border border-border flex flex-col justify-between">
         <div>
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
               Funded Envelopes
             </span>
-            <div className="w-9 h-9 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center">
-              <ShieldCheck className="w-5 h-5" />
+            <div className="w-9 h-9 rounded-full bg-warning-subtle text-warning flex items-center justify-center">
+              <ShieldCheck className="w-4 h-4" />
             </div>
           </div>
 
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-extrabold text-[#0F172A] tracking-tight">
+            <span className="text-4xl font-black font-mono tracking-tight text-foreground">
               {fundedWaitingCourier}
             </span>
-            <span className="text-xs font-semibold text-slate-500">
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Awaiting Courier
             </span>
           </div>
         </div>
 
-        <div className="pt-3 border-t border-slate-100 mt-3 text-xs text-amber-700 font-semibold flex items-center gap-1.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-          <span>Exact COD cash isolated in envelopes</span>
+        <div className="pt-3 border-t border-border mt-3 text-xs text-warning font-semibold flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-warning" />
+          <span>Exact COD cash sealed in envelopes</span>
         </div>
       </div>
 
-      {/* 4. Escrow Cash Float: Crisp White Card */}
-      <div className="surface-card p-5 flex flex-col justify-between">
+      {/* 4. Escrow Cash Float Card */}
+      <div className="card-lift glass-card p-6 rounded-2xl bg-surface border border-border flex flex-col justify-between">
         <div>
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
               Escrow Cash Float
             </span>
-            <div className="w-9 h-9 rounded-2xl bg-slate-100 text-slate-700 flex items-center justify-center">
-              <Banknote className="w-5 h-5" />
+            <div className="w-9 h-9 rounded-full bg-muted text-foreground flex items-center justify-center">
+              <Banknote className="w-4 h-4" />
             </div>
           </div>
 
           <div className="flex items-baseline gap-1">
-            <span className="text-sm font-bold text-slate-400">₱</span>
-            <span className="text-3xl font-extrabold text-[#0F172A] tracking-tight font-mono">
+            <span className="text-sm font-bold text-muted-foreground">₱</span>
+            <span className="text-4xl font-black font-mono tracking-tight text-foreground">
               {totalCashHeld.toFixed(2)}
             </span>
           </div>
         </div>
 
-        <div className="pt-3 border-t border-slate-100 mt-3 text-xs text-slate-500">
+        <div className="pt-3 border-t border-border mt-3 text-xs text-muted-foreground">
           Zero-credit escrow: 100% solvency guaranteed
         </div>
       </div>
