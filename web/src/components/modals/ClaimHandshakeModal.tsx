@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { ParcelRow, VisualLogRow } from '@/types/database';
 import { StaffSession } from '../StaffAuthModal';
-import { X, CheckCircle2, Lock, ShieldCheck, UserCheck, Banknote } from 'lucide-react';
+import { CheckCircle2, Lock, ShieldCheck, Banknote } from 'lucide-react';
 
 interface ClaimHandshakeModalProps {
   parcel: ParcelRow | null;
@@ -16,7 +16,6 @@ interface ClaimHandshakeModalProps {
 
 export const ClaimHandshakeModal: React.FC<ClaimHandshakeModalProps> = ({
   parcel,
-  visualLog,
   isOpen,
   onClose,
   onExecuteClaim,
@@ -40,51 +39,41 @@ export const ClaimHandshakeModal: React.FC<ClaimHandshakeModalProps> = ({
 
   return (
     <div
+      id="claim-handshake-modal"
       role="dialog"
       aria-modal="true"
-      aria-labelledby="claim-handshake-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-md animate-in fade-in"
+      aria-labelledby="modal-title"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-md"
     >
-      <div className="card-lift glass-card relative w-full max-w-lg bg-surface text-foreground rounded-3xl p-6 sm:p-8 shadow-2xl border border-border space-y-6">
-        {/* Close Button */}
+      <div className="w-full max-w-lg p-8 sm:p-10 rounded-3xl bg-surface border border-border shadow-2xl space-y-6 relative">
+        {/* Close Button (1:1 from references/feedback-dialogs.md line 57-65) */}
         <button
           type="button"
           onClick={onClose}
-          aria-label="Close claim handshake dialog"
-          className="absolute top-6 right-6 w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label="Close dialog"
+          className="absolute top-6 right-6 w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <X className="w-5 h-5" />
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
         </button>
 
-        {/* Header */}
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center border border-primary/20">
-            <UserCheck className="w-6 h-6" />
+        {/* Modal Title Stack (1:1 from references/feedback-dialogs.md lines 67-75) */}
+        <div className="space-y-1">
+          <div className="text-xs font-semibold uppercase tracking-widest text-primary">
+            Handshake Handover
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 id="claim-handshake-title" className="text-xl font-extrabold text-foreground tracking-tight">
-                Claim Handshake Handover
-              </h2>
-              {hasPing ? (
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-success-subtle text-success border border-success/30 animate-pulse">
-                  MPIN Pinged
-                </span>
-              ) : (
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-muted text-muted-foreground border border-border">
-                  Locked
-                </span>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Atomic Handover Gate · Invariant 3 & PoLP Enforcement
-            </p>
-          </div>
+          <h2 id="modal-title" className="text-2xl font-bold tracking-tight text-foreground">
+            Release Consignment
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            Zero-credit physical envelope change breakdown & atomic student authentication.
+          </p>
         </div>
 
         {/* Status Verification Notice */}
         {!hasPing ? (
-          <div className="p-4 rounded-2xl bg-warning-subtle border border-warning/30 text-xs text-warning space-y-1">
+          <div className="p-4 rounded-2xl bg-warning/10 border border-warning/25 text-xs text-warning space-y-1">
             <p className="font-bold flex items-center gap-1.5">
               <Lock className="w-4 h-4" />
               <span>Handshake Gate Locked</span>
@@ -94,124 +83,105 @@ export const ClaimHandshakeModal: React.FC<ClaimHandshakeModalProps> = ({
             </p>
           </div>
         ) : (
-          <div className="p-4 rounded-2xl bg-success-subtle border border-success/30 text-xs text-success space-y-1">
+          <div className="p-4 rounded-2xl bg-success/10 border border-success/25 text-xs text-success space-y-1">
             <p className="font-bold flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4" />
               <span>Student Authenticated at Desk</span>
             </p>
             <p className="text-[11px] opacity-90 leading-relaxed">
-              Recipient entered MPIN at {new Date(parcel.claim_pinged_at!).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}. Safe to hand over physical parcel and enclosed change.
+              Identity verified via mobile MPIN challenge ping. Ready for physical consignment release.
             </p>
           </div>
         )}
 
-        {/* Student & Parcel Information (PoLP) */}
-        <div className="p-5 rounded-2xl bg-surface-elevated border border-border space-y-3">
-          <div className="flex justify-between items-start">
+        {/* Consignment Overview Card */}
+        <div className="p-4 rounded-2xl bg-surface-elevated border border-border space-y-3">
+          <div className="flex items-center justify-between border-b border-border-subtle pb-2">
             <div>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                Recipient Student
+              <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground block">
+                Recipient
               </span>
-              <p className="text-base font-bold text-foreground mt-0.5">
-                {parcel.recipient_name || 'Registered Recipient'}
-              </p>
-              <p className="text-xs font-mono text-primary font-semibold mt-0.5">
-                {parcel.recipient_school_id || 'CTU-2024-8841'}
-              </p>
-            </div>
-            <div className="text-right">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                Carrier
+              <span className="text-sm font-bold text-foreground">
+                {parcel.recipient_name}
               </span>
-              <p className="text-sm font-semibold text-foreground mt-0.5">
-                {parcel.carrier}
-              </p>
-              <p className="text-xs font-mono text-muted-foreground mt-0.5">
-                {parcel.waybill_number}
-              </p>
             </div>
+            <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+              {parcel.carrier || 'Standard Courier'}
+            </span>
           </div>
 
-          {/* Audit Attribution */}
-          <div className="pt-2 border-t border-border flex items-center justify-between text-[11px] text-muted-foreground font-medium">
-            <span className="flex items-center gap-1 text-success">
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>Visual Log: {visualLog ? 'Verified by Gemini' : 'Active'}</span>
-            </span>
-            <span className="flex items-center gap-1">
-              <ShieldCheck className="w-3.5 h-3.5 text-primary" />
-              <span>Funded by: {parcel.payment_staff_id || 'STAFF-0488'}</span>
-            </span>
+          <div className="grid grid-cols-2 gap-3 text-xs">
+            <div>
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground block">
+                Tracking Waybill
+              </span>
+              <span className="font-mono font-bold text-foreground">
+                {parcel.waybill_number}
+              </span>
+            </div>
+            <div>
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground block">
+                Shelf Location
+              </span>
+              <span className="font-mono font-bold text-primary">
+                BAY-1A
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* Physical Cash Envelope Breakdown */}
-        <div className="p-5 rounded-2xl bg-surface-elevated border border-border space-y-2.5">
+        {/* Change Breakdown & Physical Envelope Reconciliation */}
+        <div className="p-5 rounded-2xl bg-surface-elevated border border-border space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-              <Banknote className="w-4 h-4 text-primary" />
-              <span>Envelope Ledger Reconciliation</span>
+            <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+              <Banknote className="w-3.5 h-3.5 text-primary" />
+              <span>Physical Envelope Reconciliation</span>
             </span>
-            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              Isolated Float
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-surface border border-border text-foreground">
+              Envelope #{parcel.parcel_id.slice(-4).toUpperCase()}
             </span>
           </div>
 
-          <div className="space-y-1.5 text-xs pt-1">
+          <div className="space-y-1.5 text-xs">
             <div className="flex justify-between text-muted-foreground">
-              <span>Cash Deposited by Student:</span>
-              <span className="font-mono font-bold text-foreground">
-                ₱{parcel.cash_deposited.toFixed(2)}
-              </span>
-            </div>
-            <div className="flex justify-between text-muted-foreground">
-              <span>Courier COD Paid:</span>
-              <span className="font-mono font-bold text-foreground">
+              <span>COD Amount Paid to Courier:</span>
+              <span className="font-mono font-medium text-foreground">
                 ₱{parcel.cod_amount.toFixed(2)}
               </span>
             </div>
-            <div className="flex justify-between items-baseline pt-2 border-t border-border font-bold">
-              <span className="text-foreground">Change to Return with Parcel:</span>
-              <span className="text-xl font-mono text-success font-extrabold">
+            <div className="flex justify-between text-muted-foreground">
+              <span>Pre-funded Deposit from Student:</span>
+              <span className="font-mono font-medium text-foreground">
+                ₱{parcel.cash_deposited.toFixed(2)}
+              </span>
+            </div>
+            <div className="flex justify-between pt-2 border-t border-border-subtle font-bold text-sm">
+              <span className="text-foreground">Change Due in Cash Envelope:</span>
+              <span className="font-mono text-primary text-base">
                 ₱{changeDue.toFixed(2)}
               </span>
             </div>
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="space-y-2.5 pt-2">
-          <button
-            type="button"
-            onClick={handleCommitRelease}
-            disabled={!hasPing || isSubmitting}
-            aria-label={`Release parcel ${parcel.waybill_number} and disburse change`}
-            className={`relative inline-flex items-center justify-center gap-2 w-full py-4 px-6 rounded-full text-xs font-semibold uppercase tracking-widest transition-all overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group ${
-              hasPing && !isSubmitting
-                ? 'bg-primary text-primary-foreground hover:bg-primary-hover active:scale-[0.98] shadow-[0_4px_16px_rgba(217,38,26,0.35)] cursor-pointer'
-                : 'bg-muted text-muted-foreground border border-border cursor-not-allowed opacity-50'
-            }`}
-          >
-            {hasPing && (
-              <span className="absolute inset-0 pointer-events-none -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-out bg-gradient-to-r from-transparent via-white/25 to-transparent" />
-            )}
-            <CheckCircle2 className="relative z-10 w-4 h-4" />
-            <span className="relative z-10">
-              {isSubmitting
-                ? 'Committing Release...'
-                : hasPing
-                ? `Release Parcel & Hand Over ₱${changeDue.toFixed(2)} Change`
-                : 'Locked (Awaiting Student MPIN Ping)'}
-            </span>
-          </button>
+        {/* Staff Operator Identity Footer */}
+        <div className="flex items-center justify-between text-[11px] text-muted-foreground px-1">
+          <span className="flex items-center gap-1">
+            <ShieldCheck className="w-3.5 h-3.5 text-primary" />
+            <span>Staff: {staffSession?.staffId || 'STAFF-0488'}</span>
+          </span>
+          <span className="font-mono text-[10px]">Station: CTU-DANAO</span>
+        </div>
 
+        {/* Actions (1:1 from references/feedback-dialogs.md line 102-107) */}
+        <div className="space-y-2">
           <button
             type="button"
-            onClick={onClose}
-            aria-label="Cancel and close dialog"
-            className="w-full py-2.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            disabled={!hasPing || isSubmitting}
+            onClick={handleCommitRelease}
+            className="w-full py-3.5 text-xs font-semibold uppercase tracking-widest text-primary-foreground bg-primary hover:bg-primary/90 rounded-full transition-all shadow-[0_4px_16px_rgba(255,45,32,0.3)] focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40 disabled:pointer-events-none"
           >
-            Cancel
+            {isSubmitting ? 'Recording Handshake...' : 'Confirm Release & Handover Parcel'}
           </button>
         </div>
       </div>

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import QRCode from 'qrcode';
-import { X, Printer } from 'lucide-react';
+import { Printer } from 'lucide-react';
 
 interface PrintStationQrModalProps {
   isOpen: boolean;
@@ -48,80 +48,73 @@ export const PrintStationQrModal: React.FC<PrintStationQrModalProps> = ({
 
   return (
     <div 
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="station-qr-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-md animate-in fade-in"
+      id="station-qr-modal" 
+      role="dialog" 
+      aria-modal="true" 
+      aria-labelledby="modal-title" 
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-md"
     >
-      <div className="card-lift glass-card relative w-full max-w-md bg-surface text-foreground rounded-3xl p-6 sm:p-8 shadow-2xl border border-border">
-        {/* Close Button (No print) */}
+      <div className="w-full max-w-md p-8 sm:p-10 rounded-3xl bg-surface border border-border shadow-2xl space-y-6 relative">
+        {/* Close Button (1:1 from references/feedback-dialogs.md lines 57-65) */}
         <button
           type="button"
           onClick={onClose}
-          aria-label="Close station QR poster dialog"
-          className="no-print absolute top-6 right-6 w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label="Close dialog"
+          className="no-print absolute top-6 right-6 w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <X className="w-5 h-5" />
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
         </button>
 
-        {/* Printable Poster Area */}
-        <div className="text-center space-y-4 pt-1">
-          {/* Header */}
-          <div>
-            <span className="inline-block px-3 py-1 rounded-full text-[10px] font-semibold uppercase tracking-widest bg-primary/10 text-primary border border-primary/20">
-              Campus Logistics Terminal
+        {/* Title Stack (1:1 from references/feedback-dialogs.md lines 67-75) */}
+        <div className="space-y-1 no-print">
+          <div className="text-xs font-semibold uppercase tracking-widest text-primary">
+            Stationary Poster
+          </div>
+          <h2 id="modal-title" className="text-2xl font-bold tracking-tight text-foreground">
+            Station Check-In QR
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            Mount this code at the desk counter for mobile student arrival check-in.
+          </p>
+        </div>
+
+        {/* Poster Paper Container */}
+        <div className="bg-surface p-6 rounded-2xl border border-border text-center space-y-4 print:border-none print:p-0">
+          <div className="space-y-0.5">
+            <span className="text-[10px] font-mono uppercase tracking-widest text-primary font-bold">
+              CTU Danao · Campus ParcelHub
             </span>
-            <h3 id="station-qr-title" className="text-xl font-extrabold text-foreground tracking-tight mt-2">
-              ParcelHub Claim Station
+            <h3 className="text-xl font-black tracking-tight text-foreground">
+              {stationName || 'Main Hub Terminal'}
             </h3>
-            <p className="text-xs font-semibold text-muted-foreground">
-              {stationName}
+            <p className="text-xs text-muted-foreground font-mono">
+              Station Code: {stationCode || 'CTU-DANAO-MAIN-HUB'}
             </p>
           </div>
 
-          {/* QR Code Canvas */}
-          <div className="bg-surface-elevated p-4 rounded-2xl border border-border inline-block shadow-sm">
-            <canvas ref={canvasRef} className="rounded-xl mx-auto" />
-            <p className="text-xs font-mono font-bold text-foreground mt-2">
-              {stationCode}
-            </p>
+          <div className="flex justify-center p-3 bg-white rounded-xl shadow-xs border border-border inline-block mx-auto">
+            <canvas ref={canvasRef} />
           </div>
 
-          {/* Instructions */}
-          <div className="bg-primary/5 p-4 rounded-2xl border border-primary/20 text-left text-xs space-y-1.5">
-            <p className="font-bold text-foreground uppercase tracking-wider text-[11px]">
-              Pickup Instructions for Students:
+          <div className="space-y-1 text-xs text-muted-foreground">
+            <p className="font-semibold text-foreground">Scan with ParcelHub Mobile App</p>
+            <p className="text-[11px]">
+              Signals your physical arrival to counter staff for instant parcel claim release.
             </p>
-            <ol className="list-decimal pl-4 text-muted-foreground space-y-1 text-[11px]">
-              <li>Open your ParcelHub Mobile App.</li>
-              <li>Tap <strong>Initiate Pickup Handshake</strong>.</li>
-              <li>Point your camera at this QR code to authenticate station.</li>
-              <li>Enter your 6-digit MPIN to dispatch your claim ping to desk staff.</li>
-            </ol>
           </div>
         </div>
 
-        {/* Action Buttons (No print) */}
-        <div className="no-print mt-6 flex gap-3">
-          <button
-            type="button"
-            onClick={handlePrint}
-            aria-label="Print counter QR poster"
-            className="relative inline-flex items-center justify-center gap-2 flex-1 py-3 px-5 rounded-full text-xs font-semibold uppercase tracking-wider text-primary-foreground bg-primary hover:bg-primary-hover shadow-[0_4px_16px_rgba(217,38,26,0.35)] transition-all overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group"
-          >
-            <span className="absolute inset-0 pointer-events-none -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-out bg-gradient-to-r from-transparent via-white/25 to-transparent" />
-            <Printer className="relative z-10 w-4 h-4" />
-            <span className="relative z-10">Print Poster</span>
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close dialog"
-            className="px-5 py-3 rounded-full text-xs font-semibold uppercase tracking-wider bg-muted hover:bg-surface-elevated text-foreground border border-border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            Close
-          </button>
-        </div>
+        {/* Action Button (1:1 from references/feedback-dialogs.md lines 102-107) */}
+        <button
+          type="button"
+          onClick={handlePrint}
+          className="no-print w-full py-3.5 text-xs font-semibold uppercase tracking-widest text-primary-foreground bg-primary hover:bg-primary/90 rounded-full transition-all shadow-[0_4px_16px_rgba(255,45,32,0.3)] flex items-center justify-center gap-2 focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <Printer className="w-4 h-4" />
+          <span>Print Station Poster</span>
+        </button>
       </div>
     </div>
   );

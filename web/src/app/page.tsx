@@ -1,8 +1,12 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Navbar } from '@/components/Navbar';
+import { HeroStage } from '@/components/HeroStage';
+import { TrustBar } from '@/components/TrustBar';
 import { StatCards } from '@/components/StatCards';
+import { OfferingCards } from '@/components/OfferingCards';
+import { TestimonialStack } from '@/components/TestimonialStack';
 import { QueueTab } from '@/components/tabs/QueueTab';
 import { IntakeTab } from '@/components/tabs/IntakeTab';
 import { CashInTab } from '@/components/tabs/CashInTab';
@@ -18,7 +22,6 @@ import { StaffAuthModal, StaffSession } from '@/components/StaffAuthModal';
 import { DataService } from '@/lib/dataService';
 import { INITIAL_CONFIG } from '@/lib/store';
 import { ParcelRow, VisualLogRow, EscrowLedgerRow } from '@/types/database';
-import { UserCheck, Camera, Banknote, History, CheckCircle2 } from 'lucide-react';
 
 export default function Home() {
   const [parcels, setParcels] = useState<ParcelRow[]>([]);
@@ -26,8 +29,8 @@ export default function Home() {
   const [, setLedger] = useState<EscrowLedgerRow[]>([]);
   const [config, setConfig] = useState(INITIAL_CONFIG);
 
-  // Theme State (Dark by default, persisted in localStorage)
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  // Theme State: Default to Warm Chalk (#faf9f7) as per Symph Studio Craft 60% dominant canvas
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
 
   // Authentication: Staff session gating desk operations
   const [staffSession, setStaffSession] = useState<StaffSession | null>(null);
@@ -46,15 +49,16 @@ export default function Home() {
   const [isDatabaseModalOpen, setIsDatabaseModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  const workspaceRef = useRef<HTMLDivElement>(null);
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 4500);
   };
 
   // Theme Management
   useEffect(() => {
     const savedTheme = localStorage.getItem('parcelhub_theme');
-    const isDark = savedTheme ? savedTheme === 'dark' : true;
+    const isDark = savedTheme ? savedTheme === 'dark' : false;
     setIsDarkMode(isDark);
     if (isDark) {
       document.documentElement.classList.add('dark');
@@ -119,47 +123,34 @@ export default function Home() {
         ai_user_receipt_ocr: cfg.ai_user_receipt_ocr,
         ai_staff_intake_precheck: cfg.ai_staff_intake_precheck,
       }));
-    } catch (e) {
-      console.warn('Data fetch error:', e);
+    } catch (err) {
+      console.error('Failed to load terminal data:', err);
     }
   }, []);
 
   useEffect(() => {
     loadData();
-    const unsubscribe = DataService.subscribeToChanges(() => {
-      loadData();
-      showToast('Live Realtime Update received from Supabase!');
-    });
-    return () => unsubscribe();
+    const interval = setInterval(loadData, 3000);
+    return () => clearInterval(interval);
   }, [loadData]);
 
-  // Toggle independent AI settings
-  const handleToggleUserReceiptAi = async () => {
-    const newVal = !config.ai_user_receipt_ocr;
-    await DataService.updateConfigToggle('ai_user_receipt_ocr', newVal);
-    setConfig((c) => ({ ...c, ai_user_receipt_ocr: newVal }));
-    showToast(`Student Receipt AI OCR is now ${newVal ? 'ENABLED' : 'DISABLED'}`);
+  // Operational Handlers
+  const handleExecuteClaim = async (parcelIds: string | string[], staffId: string) => {
+    try {
+      await DataService.executeClaim(parcelIds, staffId);
+      await loadData();
+      const count = Array.isArray(parcelIds) ? parcelIds.length : 1;
+      showToast(
+        count > 1
+          ? `Batch released ${count} parcels to waiting recipients.`
+          : 'Consignment successfully handed over to verified recipient.'
+      );
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      showToast(`Claim failed: ${message}`);
+    }
   };
 
-  const handleToggleStaffIntakeAi = async () => {
-    const newVal = !config.ai_staff_intake_precheck;
-    await DataService.updateConfigToggle('ai_staff_intake_precheck', newVal);
-    setConfig((c) => ({ ...c, ai_staff_intake_precheck: newVal }));
-    showToast(`Staff Intake AI Precheck is now ${newVal ? 'ENABLED' : 'DISABLED'}`);
-  };
-
-  // 1. Handle Cash-In Transition: STAGED -> FUNDED
-  const handleCommitCashIn = async (
-    parcelId: string,
-    cashDeposited: number,
-    staffId: string
-  ) => {
-    await DataService.commitCashIn(parcelId, cashDeposited, staffId);
-    await loadData();
-    showToast('Physical envelope funded successfully! State advanced to FUNDED.');
-  };
-
-  // 2. Handle Courier Intake Transition: FUNDED -> RECEIVED_LOGGED
   const handleCommitIntake = async (
     parcelId: string,
     extractedWaybill: string,
@@ -169,73 +160,97 @@ export default function Home() {
     exactDisbursed: number,
     staffId: string
   ) => {
-    await DataService.commitIntake(
-      parcelId,
-      extractedWaybill,
-      condition,
-      confidence,
-      imageUri,
-      !config.ai_staff_intake_precheck,
-      exactDisbursed,
-      staffId
-    );
-    await loadData();
-    showToast('Intake logged & envelope disbursed! Notification dispatched to student.');
-    setActiveTab('QUEUE');
-  };
-
-  // 3. Handle Inverted Claim Handshake: RECEIVED_LOGGED -> CLAIMED
-  const handleExecuteClaim = async (parcelIds: string | string[], staffId: string) => {
-    const ids = Array.isArray(parcelIds) ? parcelIds : [parcelIds];
-    await DataService.executeClaim(ids, staffId);
-    await loadData();
-
-    showToast(
-      `Atomic handover complete! Released ${ids.length} package(s) with cash change to recipient.`
-    );
-  };
-
-  // 4. Simulate Student Scanning Station QR to Pay Cash (Unlocks Cash-In Tab)
-  const handleSimulatePaymentPing = async () => {
-    const unpinged = parcels.find((p) => p.current_status === 'STAGED' && !p.payment_pinged_at);
-    if (unpinged) {
-      await DataService.commitPaymentPing(unpinged.parcel_id);
-      await loadData();
-      showToast(`Payment Ping: Student scanned station QR for ${unpinged.waybill_number}! Unlocked in Cash-In.`);
-      setActiveTab('CASH_IN');
-    } else {
-      showToast('All staged parcels already have payment pings active.');
-      setActiveTab('CASH_IN');
-    }
-  };
-
-  // 5. Simulate Student Dispatching Claim Ping
-  const handleSimulateClaimPing = async () => {
-    const candidate = parcels.find(
-      (p) => p.current_status === 'RECEIVED_LOGGED' && !p.claim_pinged_at
-    );
-
-    if (candidate) {
-      await DataService.dispatchClaimPing(candidate.parcel_id);
-      await loadData();
-      showToast(
-        `Claim Ping: ${candidate.recipient_name} entered MPIN & pinged desk! Surfaced in queue.`
+    try {
+      await DataService.commitIntake(
+        parcelId,
+        extractedWaybill,
+        condition,
+        confidence,
+        imageUri,
+        false,
+        exactDisbursed,
+        staffId
       );
-      setActiveTab('QUEUE');
-    } else {
-      showToast('No unpinged parcels currently awaiting pickup in hub custody.');
-      setActiveTab('QUEUE');
+      await loadData();
+      showToast(`Consignment verified and locked in custody. Payout of ₱${exactDisbursed.toFixed(2)} recorded.`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      showToast(`Intake error: ${message}`);
     }
   };
 
+  const handleCommitCashIn = async (parcelId: string, cashDeposited: number, staffId: string) => {
+    try {
+      await DataService.commitCashIn(parcelId, cashDeposited, staffId);
+      await loadData();
+      showToast(`Deposit of ₱${cashDeposited.toFixed(2)} received and sealed into vault envelope.`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      showToast(`Cash-in error: ${message}`);
+    }
+  };
+
+  // Simulation Triggers
+  const handleSimulateClaimPing = async () => {
+    const candidate = parcels.find((p) => p.current_status === 'RECEIVED_LOGGED' && !p.claim_pinged_at);
+    if (!candidate) {
+      showToast('No unpinged parcels in hub custody to simulate.');
+      return;
+    }
+    await DataService.dispatchClaimPing(candidate.parcel_id);
+    await loadData();
+    showToast(`Simulation: Student arrived for waybill ${candidate.waybill_number}. Ping active!`);
+  };
+
+  const handleSimulatePaymentPing = async () => {
+    const candidate = parcels.find((p) => p.current_status === 'STAGED' && !p.payment_pinged_at);
+    if (!candidate) {
+      showToast('No unpinged staged parcels to simulate.');
+      return;
+    }
+    await DataService.commitPaymentPing(candidate.parcel_id);
+    await loadData();
+    showToast(`Simulation: Student pinged counter for deposit on ${candidate.waybill_number}.`);
+  };
+
+  const handleToggleUserReceiptAi = async () => {
+    const nextVal = !config.ai_user_receipt_ocr;
+    setConfig((c) => ({ ...c, ai_user_receipt_ocr: nextVal }));
+    await DataService.updateConfigToggle('ai_user_receipt_ocr', nextVal);
+    showToast(`Student Receipt OCR AI ${nextVal ? 'Activated' : 'Bypassed'}`);
+  };
+
+  const handleToggleStaffIntakeAi = async () => {
+    const nextVal = !config.ai_staff_intake_precheck;
+    setConfig((c) => ({ ...c, ai_staff_intake_precheck: nextVal }));
+    await DataService.updateConfigToggle('ai_staff_intake_precheck', nextVal);
+    showToast(`Staff Intake Precheck AI ${nextVal ? 'Activated' : 'Bypassed'}`);
+  };
+
+  const scrollToWorkspace = () => {
+    workspaceRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  // Counts for tabs and capability cards
   const activePingCount = parcels.filter(
     (p) => p.current_status === 'RECEIVED_LOGGED' && p.claim_pinged_at
   ).length;
+  const queueCount = parcels.filter((p) => p.current_status === 'RECEIVED_LOGGED').length;
+  const intakeCount = parcels.filter((p) => p.current_status === 'FUNDED').length;
+  const cashInCount = parcels.filter((p) => p.current_status === 'STAGED').length;
 
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground selection:bg-primary selection:text-primary-foreground">
-      {/* Floating Frosted Header */}
+    <div className="min-h-screen flex flex-col bg-background text-foreground transition-colors selection:bg-primary selection:text-primary-foreground">
+      {/* 1. Symph Studio Header (1:1 from references/navbar.md) */}
       <Navbar
+        activeTab={activeTab}
+        onTabChange={(tab) => {
+          setActiveTab(tab);
+          scrollToWorkspace();
+        }}
+        queueCount={queueCount}
+        intakeCount={intakeCount}
+        cashInCount={cashInCount}
         userReceiptAi={config.ai_user_receipt_ocr}
         staffIntakeAi={config.ai_staff_intake_precheck}
         onToggleUserReceiptAi={handleToggleUserReceiptAi}
@@ -244,140 +259,182 @@ export default function Home() {
         onOpenDatabaseModal={() => setIsDatabaseModalOpen(true)}
         onSimulateClaimPing={handleSimulateClaimPing}
         onSimulatePaymentPing={handleSimulatePaymentPing}
-        activePingCount={activePingCount}
         staffSession={staffSession}
         onLogoutStaff={handleLogoutStaff}
+        onOpenStaffAuth={() => setIsAuthModalOpen(true)}
         isDarkMode={isDarkMode}
         onToggleTheme={handleToggleTheme}
       />
 
-      {/* Main Terminal Workspace */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 pt-6 pb-12">
-        {/* Toast Alert Notification */}
-        {toastMessage && (
-          <div className="card-lift glass-card mb-5 p-3.5 rounded-2xl bg-surface/95 text-foreground font-medium text-xs flex items-center justify-between border border-primary/30 shadow-lg animate-in fade-in slide-in-from-top-2">
-            <div className="flex items-center gap-2.5">
-              <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-              <CheckCircle2 className="w-4 h-4 text-primary" />
-              <span>{toastMessage}</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setToastMessage(null)}
-              aria-label="Dismiss notification"
-              className="p-1 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              ✕
-            </button>
-          </div>
-        )}
+      {/* 2. Symph Cinematic Studio Hero Stage (1:1 from references/layouts-tables.md Section 1) */}
+      <HeroStage
+        waitingCount={activePingCount}
+        onOpenClaimModal={() => {
+          const pinged = parcels.find((p) => p.current_status === 'RECEIVED_LOGGED' && p.claim_pinged_at);
+          if (pinged) setSelectedClaimParcel(pinged);
+          else {
+            setActiveTab('QUEUE');
+            scrollToWorkspace();
+          }
+        }}
+        onOpenIntakeModal={() => {
+          const funded = parcels.find((p) => p.current_status === 'FUNDED');
+          if (funded) setSelectedIntakeParcel(funded);
+          else {
+            setActiveTab('INTAKE');
+            scrollToWorkspace();
+          }
+        }}
+        onScrollToWorkspace={scrollToWorkspace}
+      />
 
-        {/* 4 Telemetry Counters */}
+      {/* 3. Partner / Infrastructure Trust Bar (1:1 from references/layouts-tables.md Section 2) */}
+      <TrustBar />
+
+      {/* Main Terminal Workspace */}
+      <main ref={workspaceRef} className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-12">
+        {/* 4. High-Density KPI Metric Cards (1:1 from references/cards.md Section 3) */}
         <StatCards
           parcels={parcels}
           onNavigateToQueue={() => setActiveTab('QUEUE')}
         />
 
-        {/* Segmented Mode Switcher (Pill Switcher) */}
-        <nav aria-label="Terminal Workflow Modes" className="flex items-center gap-1.5 border-b border-border pb-3 mb-5 overflow-x-auto">
-          <button
-            type="button"
-            onClick={() => setActiveTab('QUEUE')}
-            aria-label="Switch to Claim Handshake Queue tab"
-            className={`flex items-center gap-2 px-5 py-2 rounded-full text-xs font-semibold uppercase tracking-wider transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-              activeTab === 'QUEUE'
-                ? 'bg-primary text-primary-foreground shadow-[0_2px_10px_rgba(255,45,32,0.35)]'
-                : 'bg-surface text-muted-foreground hover:text-foreground hover:bg-surface-elevated border border-border'
-            }`}
-          >
-            <UserCheck className="w-3.5 h-3.5" />
-            <span>1. Claim Handshake Queue</span>
-            {activePingCount > 0 && (
-              <span className="w-4 h-4 rounded-full bg-success text-success-foreground font-black text-[9px] flex items-center justify-center animate-pulse">
-                {activePingCount}
-              </span>
-            )}
-          </button>
+        {/* 5. Symph Offering / Capability Launchpad Cards (1:1 from references/cards.md Section 1) */}
+        <OfferingCards
+          onSelectModule={(mode) => setActiveTab(mode)}
+          queueCount={queueCount}
+          intakeCount={intakeCount}
+          cashInCount={cashInCount}
+          ledgerCount={parcels.length}
+        />
 
-          <button
-            type="button"
-            onClick={() => setActiveTab('INTAKE')}
-            aria-label="Switch to Courier Arrival & AI Ingestion tab"
-            className={`flex items-center gap-2 px-5 py-2 rounded-full text-xs font-semibold uppercase tracking-wider transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-              activeTab === 'INTAKE'
-                ? 'bg-primary text-primary-foreground shadow-[0_2px_10px_rgba(255,45,32,0.35)]'
-                : 'bg-surface text-muted-foreground hover:text-foreground hover:bg-surface-elevated border border-border'
-            }`}
-          >
-            <Camera className="w-3.5 h-3.5" />
-            <span>2. Courier Arrival & AI Ingestion</span>
-          </button>
+        {/* 6. Filter Pill Toggle Group for Workspaces (1:1 from references/buttons-inputs.md lines 135-155) */}
+        <div className="space-y-6 pt-4 border-t border-border/80">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-widest text-primary">
+                Active Desk Session
+              </div>
+              <h2 className="text-2xl font-bold tracking-tight text-foreground">
+                Operational Workspace
+              </h2>
+            </div>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab('CASH_IN')}
-            aria-label="Switch to Cash-In & Envelopes tab"
-            className={`flex items-center gap-2 px-5 py-2 rounded-full text-xs font-semibold uppercase tracking-wider transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-              activeTab === 'CASH_IN'
-                ? 'bg-primary text-primary-foreground shadow-[0_2px_10px_rgba(255,45,32,0.35)]'
-                : 'bg-surface text-muted-foreground hover:text-foreground hover:bg-surface-elevated border border-border'
-            }`}
-          >
-            <Banknote className="w-3.5 h-3.5" />
-            <span>3. Cash-In & Envelopes</span>
-          </button>
+            {/* Filter Pill Toggle Group */}
+            <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Terminal Modules">
+              <button
+                type="button"
+                onClick={() => setActiveTab('QUEUE')}
+                className={`px-5 py-2 text-xs font-semibold uppercase tracking-wider rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-ring ${
+                  activeTab === 'QUEUE'
+                    ? 'bg-foreground text-background'
+                    : 'bg-transparent text-muted-foreground border border-border hover:text-foreground hover:border-border-subtle'
+                }`}
+              >
+                1. Queue ({queueCount})
+              </button>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab('LEDGER')}
-            aria-label="Switch to Envelope Vault Ledger tab"
-            className={`flex items-center gap-2 px-5 py-2 rounded-full text-xs font-semibold uppercase tracking-wider transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-              activeTab === 'LEDGER'
-                ? 'bg-primary text-primary-foreground shadow-[0_2px_10px_rgba(255,45,32,0.35)]'
-                : 'bg-surface text-muted-foreground hover:text-foreground hover:bg-surface-elevated border border-border'
-            }`}
-          >
-            <History className="w-3.5 h-3.5" />
-            <span>4. Envelope Vault Ledger</span>
-          </button>
-        </nav>
+              <button
+                type="button"
+                onClick={() => setActiveTab('INTAKE')}
+                className={`px-5 py-2 text-xs font-semibold uppercase tracking-wider rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-ring ${
+                  activeTab === 'INTAKE'
+                    ? 'bg-foreground text-background'
+                    : 'bg-transparent text-muted-foreground border border-border hover:text-foreground hover:border-border-subtle'
+                }`}
+              >
+                2. Intake ({intakeCount})
+              </button>
 
-        {/* Active Tab Screen */}
-        {activeTab === 'QUEUE' && (
-          <QueueTab
-            parcels={parcels}
-            visualLogs={visualLogs}
-            onOpenClaimModal={(p) => setSelectedClaimParcel(p)}
-            onOpenDetailModal={(p) => setSelectedDetailParcel(p)}
-            onBatchExecuteClaim={(ids) => handleExecuteClaim(ids, staffSession?.staffId || 'STAFF-0488')}
-          />
-        )}
+              <button
+                type="button"
+                onClick={() => setActiveTab('CASH_IN')}
+                className={`px-5 py-2 text-xs font-semibold uppercase tracking-wider rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-ring ${
+                  activeTab === 'CASH_IN'
+                    ? 'bg-foreground text-background'
+                    : 'bg-transparent text-muted-foreground border border-border hover:text-foreground hover:border-border-subtle'
+                }`}
+              >
+                3. Cash-In ({cashInCount})
+              </button>
 
-        {activeTab === 'INTAKE' && (
-          <IntakeTab
-            parcels={parcels}
-            onOpenIntakeModal={(p) => setSelectedIntakeParcel(p)}
-            onOpenDetailModal={(p) => setSelectedDetailParcel(p)}
-          />
-        )}
+              <button
+                type="button"
+                onClick={() => setActiveTab('LEDGER')}
+                className={`px-5 py-2 text-xs font-semibold uppercase tracking-wider rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-ring ${
+                  activeTab === 'LEDGER'
+                    ? 'bg-foreground text-background'
+                    : 'bg-transparent text-muted-foreground border border-border hover:text-foreground hover:border-border-subtle'
+                }`}
+              >
+                4. Ledger ({parcels.length})
+              </button>
+            </div>
+          </div>
 
-        {activeTab === 'CASH_IN' && (
-          <CashInTab
-            parcels={parcels}
-            onOpenCashInModal={(p) => setSelectedCashInParcel(p)}
-            onOpenDetailModal={(p) => setSelectedDetailParcel(p)}
-          />
-        )}
+          {/* Active Tab Screen */}
+          {activeTab === 'QUEUE' && (
+            <QueueTab
+              parcels={parcels}
+              visualLogs={visualLogs}
+              onOpenClaimModal={(p) => setSelectedClaimParcel(p)}
+              onOpenDetailModal={(p) => setSelectedDetailParcel(p)}
+              onBatchExecuteClaim={(ids) => handleExecuteClaim(ids, staffSession?.staffId || 'STAFF-0488')}
+            />
+          )}
 
-        {activeTab === 'LEDGER' && (
-          <LedgerTab
-            parcels={parcels}
-            onOpenDetailModal={(p) => setSelectedDetailParcel(p)}
-          />
-        )}
+          {activeTab === 'INTAKE' && (
+            <IntakeTab
+              parcels={parcels}
+              onOpenIntakeModal={(p) => setSelectedIntakeParcel(p)}
+              onOpenDetailModal={(p) => setSelectedDetailParcel(p)}
+            />
+          )}
+
+          {activeTab === 'CASH_IN' && (
+            <CashInTab
+              parcels={parcels}
+              onOpenCashInModal={(p) => setSelectedCashInParcel(p)}
+              onOpenDetailModal={(p) => setSelectedDetailParcel(p)}
+            />
+          )}
+
+          {activeTab === 'LEDGER' && (
+            <LedgerTab
+              parcels={parcels}
+              onOpenDetailModal={(p) => setSelectedDetailParcel(p)}
+            />
+          )}
+        </div>
+
+        {/* 7. Symph Editorial Testimonial Stack (1:1 from references/feedback-dialogs.md lines 1-38) */}
+        <TestimonialStack />
       </main>
 
-      {/* 1. Dedicated Claim Handshake Modal */}
+      {/* 8. Frosted Notice / Toast Banner (1:1 from references/feedback-dialogs.md Section 3) */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 p-6 rounded-2xl bg-surface/95 backdrop-blur-xl border border-border shadow-xl space-y-4 max-w-sm animate-in fade-in slide-in-from-bottom-2">
+          <div className="space-y-1">
+            <div className="text-[11px] font-bold uppercase tracking-widest text-foreground flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+              <span>Terminal Notification</span>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              {toastMessage}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setToastMessage(null)}
+            className="w-full py-2 text-xs font-semibold uppercase tracking-wider rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {/* 9. Dedicated Interactive Modals (All 1:1 from references/feedback-dialogs.md Section 2) */}
+      {/* 1. Claim Handshake Modal */}
       <ClaimHandshakeModal
         parcel={selectedClaimParcel}
         visualLog={visualLogs.find((v) => v.parcel_id === selectedClaimParcel?.parcel_id)}
@@ -387,7 +444,7 @@ export default function Home() {
         staffSession={staffSession}
       />
 
-      {/* 2. Dedicated Courier Intake Modal */}
+      {/* 2. Courier Intake Modal */}
       <CourierIntakeModal
         parcel={selectedIntakeParcel}
         isOpen={Boolean(selectedIntakeParcel)}
@@ -397,7 +454,7 @@ export default function Home() {
         onCommitIntake={handleCommitIntake}
       />
 
-      {/* 3. Dedicated Cash-In Funding Modal */}
+      {/* 3. Cash-In Funding Modal */}
       <CashInModal
         parcel={selectedCashInParcel}
         isOpen={Boolean(selectedCashInParcel)}
@@ -407,7 +464,7 @@ export default function Home() {
         onPrintEnvelope={(p) => setSlipModalParcel(p)}
       />
 
-      {/* 4. Dedicated PoLP Parcel Detail Inspector Modal */}
+      {/* 4. PoLP Parcel Detail Inspector Modal */}
       <ParcelDetailModal
         parcel={selectedDetailParcel}
         visualLog={visualLogs.find((v) => v.parcel_id === selectedDetailParcel?.parcel_id)}
@@ -415,7 +472,7 @@ export default function Home() {
         onClose={() => setSelectedDetailParcel(null)}
       />
 
-      {/* 5. Staff Authentication Modal (Opens when logged out) */}
+      {/* 5. Staff Authentication Modal */}
       <StaffAuthModal
         isOpen={isAuthModalOpen}
         onLoginSuccess={handleLoginSuccess}

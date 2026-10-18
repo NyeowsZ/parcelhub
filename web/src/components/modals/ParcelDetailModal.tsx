@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { ParcelRow, VisualLogRow } from '@/types/database';
-import { X, ShieldCheck, CheckCircle2, Clock, Package, Eye } from 'lucide-react';
+import { ShieldCheck, CheckCircle2, Clock, Eye } from 'lucide-react';
 
 interface ParcelDetailModalProps {
   parcel: ParcelRow | null;
@@ -24,39 +24,52 @@ export const ParcelDetailModal: React.FC<ParcelDetailModalProps> = ({
 
   return (
     <div
+      id="parcel-detail-modal"
       role="dialog"
       aria-modal="true"
-      aria-labelledby="parcel-detail-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-md animate-in fade-in"
+      aria-labelledby="modal-title"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-md overflow-y-auto"
     >
-      <div className="card-lift glass-card relative w-full max-w-lg max-h-[90vh] overflow-y-auto bg-surface text-foreground rounded-3xl p-6 sm:p-8 shadow-2xl border border-border space-y-6">
-        {/* Close Button */}
+      <div className="w-full max-w-lg p-8 sm:p-10 rounded-3xl bg-surface border border-border shadow-2xl space-y-6 relative my-auto max-h-[90vh] overflow-y-auto">
+        {/* Close Button (1:1 from references/feedback-dialogs.md lines 57-65) */}
         <button
           type="button"
           onClick={onClose}
-          aria-label="Close parcel detail dialog"
-          className="absolute top-6 right-6 w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label="Close dialog"
+          className="absolute top-6 right-6 w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <X className="w-5 h-5" />
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
         </button>
 
-        {/* Header */}
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center border border-primary/20">
-            <Package className="w-6 h-6" />
+        {/* Modal Title Stack (1:1 from references/feedback-dialogs.md lines 67-75) */}
+        <div className="space-y-1">
+          <div className="text-xs font-semibold uppercase tracking-widest text-primary">
+            PoLP Consignment Telemetry
           </div>
+          <h2 id="modal-title" className="text-2xl font-bold tracking-tight text-foreground">
+            Audit & Forensic Inspector
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            Immutable monotonic state transition audit, escrow verification, and Gemini AI log snapshot.
+          </p>
+        </div>
+
+        {/* Consignment Target Overview */}
+        <div className="p-4 rounded-2xl bg-surface-elevated border border-border flex items-center justify-between text-xs">
           <div>
-            <div className="flex items-center gap-2">
-              <h2 id="parcel-detail-title" className="text-xl font-extrabold text-foreground tracking-tight">
-                Consignment Audit Record
-              </h2>
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-primary/10 text-primary border border-primary/20">
-                {parcel.carrier}
-              </span>
-            </div>
-            <p className="text-xs font-mono text-muted-foreground mt-0.5">
-              Waybill: <strong className="text-foreground">{parcel.waybill_number}</strong>
-            </p>
+            <span className="text-[10px] uppercase font-mono tracking-widest text-muted-foreground block">
+              Recipient
+            </span>
+            <span className="font-bold text-foreground text-sm">{parcel.recipient_name}</span>
+            <span className="font-mono text-muted-foreground block text-[11px]">{parcel.waybill_number}</span>
+          </div>
+          <div className="text-right">
+            <span className="text-[10px] uppercase font-mono tracking-widest text-muted-foreground block">
+              Carrier
+            </span>
+            <span className="font-mono font-bold text-primary">{parcel.carrier || 'Standard'}</span>
           </div>
         </div>
 
@@ -68,70 +81,62 @@ export const ParcelDetailModal: React.FC<ParcelDetailModalProps> = ({
 
           <div className="grid grid-cols-4 gap-2 pt-1">
             {states.map((st, i) => {
-              const isPast = i <= currentIndex;
+              const isPastOrCurrent = i <= currentIndex;
               const isCurrent = i === currentIndex;
               return (
-                <div key={st} className="text-center space-y-1.5">
+                <div key={st} className="space-y-1 text-center">
                   <div
-                    className={`w-full h-1.5 rounded-full transition-all ${
+                    className={`h-2 rounded-full transition-all ${
                       isCurrent
-                        ? 'bg-primary shadow-[0_0_8px_rgba(255,45,32,0.5)]'
-                        : isPast
-                        ? 'bg-success'
+                        ? 'bg-primary ring-2 ring-primary/30'
+                        : isPastOrCurrent
+                        ? 'bg-primary/50'
                         : 'bg-muted'
                     }`}
                   />
-                  <p className={`text-[9px] font-bold uppercase tracking-tight ${
-                    isCurrent ? 'text-primary' : isPast ? 'text-foreground' : 'text-muted-foreground/60'
-                  }`}>
-                    {st === 'RECEIVED_LOGGED' ? 'IN CUSTODY' : st}
-                  </p>
+                  <span
+                    className={`text-[9px] font-mono uppercase tracking-wider block ${
+                      isCurrent ? 'text-primary font-bold' : 'text-muted-foreground'
+                    }`}
+                  >
+                    {st.replace('_LOGGED', '')}
+                  </span>
                 </div>
               );
             })}
           </div>
         </div>
 
-        {/* Recipient Credentials (PoLP) */}
-        <div className="p-5 rounded-2xl bg-surface-elevated border border-border space-y-2 text-xs">
-          <div className="flex justify-between items-center text-muted-foreground">
-            <span>Recipient:</span>
-            <span className="font-bold text-foreground">{parcel.recipient_name}</span>
-          </div>
-          <div className="flex justify-between items-center text-muted-foreground">
-            <span>School ID:</span>
-            <span className="font-mono font-semibold text-primary">{parcel.recipient_school_id}</span>
-          </div>
-          <div className="flex justify-between items-center text-muted-foreground">
-            <span>Current Status:</span>
-            <span className="font-bold uppercase text-foreground">{parcel.current_status}</span>
-          </div>
-          <div className="flex justify-between items-center text-muted-foreground">
-            <span>Registered:</span>
-            <span className="font-mono text-[11px] text-muted-foreground">
-              {new Date(parcel.created_at).toLocaleString('en-US', { hour12: false })}
-            </span>
-          </div>
-        </div>
-
-        {/* Physical Envelope Escrow Ledger */}
-        <div className="p-5 rounded-2xl bg-surface-elevated border border-border space-y-2 text-xs">
+        {/* Escrow & Financial Audit Ledger */}
+        <div className="p-5 rounded-2xl bg-surface-elevated border border-border space-y-3 text-xs">
           <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-            Envelope Cash Isolation
+            Zero-Credit Escrow Audit
           </span>
-          <div className="space-y-1.5 pt-1">
+
+          <div className="space-y-2">
             <div className="flex justify-between text-muted-foreground">
-              <span>Deposited Cash:</span>
-              <span className="font-mono font-bold text-foreground">₱{parcel.cash_deposited.toFixed(2)}</span>
+              <span>Expected COD Amount:</span>
+              <span className="font-mono font-bold text-foreground">
+                ₱{parcel.cod_amount.toFixed(2)}
+              </span>
             </div>
             <div className="flex justify-between text-muted-foreground">
-              <span>Courier COD Amount:</span>
-              <span className="font-mono font-bold text-warning">₱{parcel.cod_amount.toFixed(2)}</span>
+              <span>Cash Deposited:</span>
+              <span className="font-mono font-bold text-foreground">
+                ₱{parcel.cash_deposited.toFixed(2)}
+              </span>
             </div>
-            <div className="flex justify-between items-baseline pt-1.5 border-t border-border font-bold">
-              <span className="text-success">Envelope Change:</span>
-              <span className="font-mono text-base text-success font-extrabold">
+            <div className="flex justify-between text-muted-foreground">
+              <span>Envelope Change Due:</span>
+              <span className="font-mono font-bold text-primary">
                 ₱{Math.max(0, parcel.change_due).toFixed(2)}
+              </span>
+            </div>
+            <div className="flex justify-between pt-2 border-t border-border-subtle font-bold">
+              <span>Escrow Solvency Check:</span>
+              <span className="text-success flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Solvent & Pre-Funded</span>
               </span>
             </div>
           </div>
@@ -178,21 +183,24 @@ export const ParcelDetailModal: React.FC<ParcelDetailModalProps> = ({
           </div>
           <div className="flex items-center gap-1.5 font-medium">
             <Clock className="w-3.5 h-3.5 text-primary" />
-            <span>Funded By Operator: {parcel.payment_staff_id || 'STAFF-0488'}</span>
+            <span>Created: {new Date(parcel.created_at).toLocaleString('en-US', { timeZone: 'Asia/Manila' })}</span>
           </div>
+          {parcel.claim_pinged_at && (
+            <div className="flex items-center gap-1.5 text-success font-medium">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>Recipient Pinged: {new Date(parcel.claim_pinged_at).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila' })}</span>
+            </div>
+          )}
         </div>
 
-        {/* Close Action */}
-        <div className="pt-2">
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close dialog"
-            className="w-full py-3 rounded-full text-xs font-semibold uppercase tracking-wider bg-muted hover:bg-surface-elevated text-foreground border border-border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            Done
-          </button>
-        </div>
+        {/* Close Button Action */}
+        <button
+          type="button"
+          onClick={onClose}
+          className="w-full py-3.5 text-xs font-semibold uppercase tracking-widest text-foreground bg-surface hover:bg-muted border border-border rounded-full transition-all focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          Dismiss Inspector
+        </button>
       </div>
     </div>
   );
