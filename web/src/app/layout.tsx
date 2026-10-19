@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { TerminalAppShell } from '@/components/TerminalAppShell';
 
 export const metadata: Metadata = {
-  title: 'ParcelHub Staff Counter Terminal | CTU Danao Campus',
+  title: 'ParcelHub Studio Desk | CTU Danao Campus Node',
   description:
-    'Staff Desk Portal for Zero-Credit Escrow, Envelope Ledgering, and Gemini AI Visual Ingestion at CTU Danao Campus.',
+    'Functional Counter Terminal for Zero-Credit Campus Escrow, Envelope Ledgering, and Gemini AI Vision Intake.',
 };
 
 export default function RootLayout({
@@ -27,7 +28,7 @@ export default function RootLayout({
         />
       </head>
       <body className="bg-background text-foreground min-h-screen antialiased selection:bg-primary selection:text-primary-foreground">
-        {children}
+        <TerminalAppShell>{children}</TerminalAppShell>
       </body>
     </html>
   );
